@@ -71,7 +71,13 @@ Tooling: **uv** for Python deps, Alembic for migrations, pytest for tests.
 
 ## 3. Data Model (SQLAlchemy)
 
-All IDs are integer surrogate keys. All timestamps UTC.
+All IDs are integer surrogate keys. No `created_at` / `updated_at` columns
+for MVP — added later if/when needed.
+
+The `lineup` table is intentionally **denormalized** (one row per team with
+fixed slot columns) for MVP simplicity. A normalized `lineup_slot` child
+table is deferred until variable formations or historical lineup snapshots
+are needed.
 
 - **season** — `id`, `seed` (int), `user_team_id` (fk team, nullable until picked),
   `current_matchday` (int), `status` (`active` | `complete`).
@@ -94,6 +100,13 @@ All IDs are integer surrogate keys. All timestamps UTC.
 - **game_event** — `id`, `game_id`, `tick` (int), `kind` (`shot` | `goal` | `save`),
   `team_id`, `primary_skater_id` (nullable), `assist1_id`, `assist2_id`,
   `goalie_id` (nullable). Stored append-only for box score reconstruction.
+
+  Field conventions for all event kinds (`shot`, `save`, `goal`):
+  - `team_id` = the **attacking / shooting** team.
+  - `primary_skater_id` = the shooter (and, for `goal`, the scorer).
+  - `goalie_id` = the **defending** goalie.
+  - `assist1_id` / `assist2_id` are populated **only** for `goal` events;
+    null for `shot` and `save`.
 - **skater_game_stat** — `id`, `game_id`, `skater_id`, `goals`, `assists`,
   `shots`. Points derived.
 - **goalie_game_stat** — `id`, `game_id`, `goalie_id`, `shots_against`, `saves`,
@@ -173,8 +186,18 @@ The shootout winner is recorded as a 1-goal differential in stats.
 
 ### Determinism
 
-Single `random.Random` seeded with `input.seed`. `seed = hash(season.seed, game.id)`
-computed in the service before calling sim. Same input → same result, byte-for-byte.
+Single `random.Random` seeded with `input.seed`. The per-game seed is derived
+**deterministically** in the service before calling sim, using a stable
+formula (not Python's built-in `hash()`, which is salted per-process):
+
+```python
+import hashlib
+digest = hashlib.sha256(f"{season.seed}:{game.id}".encode()).digest()
+game_seed = int.from_bytes(digest[:8], "big")
+```
+
+Same `(season.seed, game.id)` always yields the same `game_seed`, across
+processes and Python versions. Same input → same result, byte-for-byte.
 
 ## 5. Services & API
 
@@ -201,6 +224,10 @@ computed in the service before calling sim. Same input → same result, byte-for
 | REG         | +2     | +0    |
 | OT / SO     | +2     | +1 (OTL) |
 
+For MVP, the `standing.ot_losses` column counts **both OT losses and SO
+losses** (no separate SOL column). This matches the points table — both
+yield +1 to the loser — and avoids extra columns until a real need appears.
+
 ### API surface
 
 ```
@@ -220,8 +247,11 @@ POST   /api/season/advance                                  synchronous; returns
 GET    /api/season/status
 ```
 
-`POST /api/league` defaults `user_team_id` to the first generated team if not
-supplied; client typically follows up with `PUT /api/league/user-team`.
+`POST /api/league` accepts `{ seed }` **only**. It creates or resets the
+single MVP league (any existing season + dependent rows are wiped) and
+defaults `user_team_id` to the first generated team. The client typically
+follows up with `PUT /api/league/user-team` once the user picks a team
+from the team-picker UI.
 
 ### Domain errors
 
@@ -334,7 +364,10 @@ Frontend tests deferred unless a specific UI behavior becomes complex.
 
 ## 8. Phase Exit Criteria
 
-- App runs locally via `docker-compose up` + `uv run` + `npm run dev`.
+- App runs locally via:
+  - `docker-compose up -d` (Postgres)
+  - `cd backend && uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`
+  - `cd frontend && npm install && npm run dev`
 - User can create a league, pick a team, view roster, edit lineup, advance
   through every matchday, see updated standings and box scores, and reach the
   season-complete screen.
