@@ -6,7 +6,7 @@
 
 **Architecture:** Strict layering — React frontend ↔ FastAPI routes ↔ services ↔ repositories ↔ Postgres, with a pure deterministic sim engine called only by services. Sim has zero DB/web dependency. Single active league/save.
 
-**Tech Stack:** Python 3.12 + uv + FastAPI + SQLAlchemy 2.x + Alembic + Pydantic v2 + pytest; React 18 + Vite + TypeScript + TanStack Router (file-based) + TanStack Query + Tailwind CSS; Postgres 16 via docker-compose.
+**Tech Stack:** Python 3.12 + uv + FastAPI + SQLAlchemy 2.x + Alembic + Pydantic v2 + pytest; React 18 + Vite + TypeScript + TanStack Router (file-based) + TanStack Query + Tailwind CSS; Postgres 16 (Homebrew-managed locally — `brew install postgresql@16 && brew services start postgresql@16`).
 
 **Spec:** `docs/superpowers/specs/2026-04-26-mini-season-design.md`
 
