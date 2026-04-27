@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -9,6 +9,8 @@ class Season(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     seed: Mapped[int] = mapped_column(Integer, nullable=False)
-    user_team_id: Mapped[int | None] = mapped_column(ForeignKey("team.id"), nullable=True)
+    # Plain int (no FK constraint) to avoid a circular FK with `team.season_id`.
+    # Validated at the service boundary (set_user_team).
+    user_team_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_matchday: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)

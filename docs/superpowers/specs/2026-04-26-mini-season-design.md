@@ -364,7 +364,7 @@ Frontend tests deferred unless a specific UI behavior becomes complex.
 ## 8. Phase Exit Criteria
 
 - App runs locally via:
-  - Postgres available locally (e.g. `brew install postgresql@16 && brew services start postgresql@16`) with databases `hockey_manager` and `hockey_manager_test` created (`createdb hockey_manager && createdb hockey_manager_test`)
+  - Postgres available locally (e.g. `brew install postgresql@16 && brew services start postgresql@16`) with database `hockey_manager` created (`createdb hockey_manager`). Tests share this DB and roll back via an outer transaction.
   - `cd backend && uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`
   - `cd frontend && npm install && npm run dev`
 - User can create a league, pick a team, view roster, edit lineup, advance
