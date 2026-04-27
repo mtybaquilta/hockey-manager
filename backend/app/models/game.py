@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import BigInteger, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -18,4 +18,4 @@ class Game(Base):
     home_shots: Mapped[int | None] = mapped_column(Integer, nullable=True)
     away_shots: Mapped[int | None] = mapped_column(Integer, nullable=True)
     result_type: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    seed: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
