@@ -58,6 +58,7 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
                 goalie_id=e.goalie_id,
                 goalie_name=goalie_names.get(e.goalie_id) if e.goalie_id else None,
                 penalty_duration_ticks=e.penalty_duration_ticks,
+                shot_quality=e.shot_quality,
             )
             for e in events
         ],

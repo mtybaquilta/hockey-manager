@@ -16,6 +16,7 @@ class EventOut(BaseModel):
     goalie_id: int | None
     goalie_name: str | None
     penalty_duration_ticks: int | None
+    shot_quality: str | None
 
 
 class SkaterStatOut(BaseModel):

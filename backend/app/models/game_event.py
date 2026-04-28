@@ -19,3 +19,4 @@ class GameEvent(Base):
     assist2_id: Mapped[int | None] = mapped_column(ForeignKey("skater.id"), nullable=True)
     goalie_id: Mapped[int | None] = mapped_column(ForeignKey("goalie.id"), nullable=True)
     penalty_duration_ticks: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shot_quality: Mapped[str | None] = mapped_column(String(8), nullable=True)

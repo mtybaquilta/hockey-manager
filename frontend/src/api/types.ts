@@ -48,6 +48,7 @@ export interface GameEvent {
   assist2_id: number | null; assist2_name: string | null;
   goalie_id: number | null; goalie_name: string | null;
   penalty_duration_ticks: number | null;
+  shot_quality: "LOW" | "MEDIUM" | "HIGH" | null;
 }
 export interface SkaterStat { skater_id: number; skater_name: string; goals: number; assists: number; shots: number; }
 export interface GoalieStat { goalie_id: number; goalie_name: string; shots_against: number; saves: number; goals_against: number; }

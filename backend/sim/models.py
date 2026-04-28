@@ -29,6 +29,12 @@ class Strength(str, Enum):
     SH = "SH"
 
 
+class ShotQuality(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
 @dataclass(frozen=True)
 class SimSkater:
     id: int
@@ -81,6 +87,7 @@ class SimEvent:
     assist2_id: int | None
     goalie_id: int | None
     penalty_duration_ticks: int | None = None
+    shot_quality: ShotQuality | None = None
 
 
 @dataclass(frozen=True)

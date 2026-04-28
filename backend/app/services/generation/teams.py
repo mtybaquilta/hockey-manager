@@ -6,7 +6,7 @@ from app.models import Team
 from app.services.generation.names import sample_team_names
 from app.services.generation.players import generate_players_for_team
 
-TEAM_COUNT = 4
+TEAM_COUNT = 30
 
 
 def generate_teams(rng: random.Random, db: Session, season_id: int) -> list[Team]:

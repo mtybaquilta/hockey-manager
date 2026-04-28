@@ -159,6 +159,7 @@ def advance_matchday(db: Session) -> dict:
                     assist2_id=e.assist2_id,
                     goalie_id=e.goalie_id,
                     penalty_duration_ticks=e.penalty_duration_ticks,
+                    shot_quality=e.shot_quality.value if e.shot_quality is not None else None,
                 )
             )
         for ss in result.skater_stats:

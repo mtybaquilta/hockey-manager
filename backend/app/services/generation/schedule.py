@@ -7,16 +7,33 @@ from app.models import Game
 GAMES_PER_PAIRING = 3
 
 
+def _round_robin_rounds(team_ids: list[int]) -> list[list[tuple[int, int]]]:
+    """Circle-method round-robin: each round has N/2 disjoint games, and over N-1
+    rounds every team plays every other exactly once. Handles even and odd N
+    (odd N inserts a bye that is filtered out)."""
+    ids = list(team_ids)
+    bye: int | None = None
+    if len(ids) % 2 == 1:
+        bye = -1  # sentinel; never written to the DB
+        ids.append(bye)
+
+    n = len(ids)
+    fixed, rotating = ids[0], ids[1:]
+    rounds: list[list[tuple[int, int]]] = []
+    for r in range(n - 1):
+        left = [fixed] + rotating[: n // 2 - 1]
+        right = list(reversed(rotating[n // 2 - 1:]))
+        pairings = [(l, r_) for l, r_ in zip(left, right) if bye not in (l, r_)]
+        rounds.append(pairings)
+        rotating = [rotating[-1]] + rotating[:-1]
+    return rounds
+
+
 def generate_schedule(rng: random.Random, db: Session, season_id: int, team_ids: list[int]) -> None:
-    """Round-robin: 4 teams -> 6 unique pairs -> GAMES_PER_PAIRING games each.
-    Each matchday has 2 disjoint games. MVP-only: assumes exactly 4 teams."""
-    assert len(team_ids) == 4, "MVP schedule generator assumes 4 teams"
-    a, b, c, d = team_ids
-    rounds = [
-        [(a, b), (c, d)],
-        [(a, c), (b, d)],
-        [(a, d), (b, c)],
-    ]
+    """Round-robin schedule. Every team plays every other team GAMES_PER_PAIRING
+    times. Home/away alternates each repetition for fairness."""
+    assert len(team_ids) >= 2, "need at least 2 teams"
+    rounds = _round_robin_rounds(team_ids)
     matchday = 1
     for rep in range(GAMES_PER_PAIRING):
         for rnd in rounds:
