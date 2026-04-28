@@ -49,3 +49,8 @@ class GameDetailOut(BaseModel):
     events: list[EventOut]
     skater_stats: list[SkaterStatOut]
     goalie_stats: list[GoalieStatOut]
+    # 4 entries: P1, P2, P3, OT.
+    home_goals_by_period: list[int]
+    away_goals_by_period: list[int]
+    home_shots_by_period: list[int]
+    away_shots_by_period: list[int]

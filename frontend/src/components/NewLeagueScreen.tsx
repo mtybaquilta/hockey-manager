@@ -1,28 +1,52 @@
 import { useState } from "react";
 import { useCreateLeague } from "../queries/league";
-import { Button } from "./Button";
-import { Card } from "./Card";
 
 export const NewLeagueScreen = () => {
   const [seed, setSeed] = useState<string>("");
   const create = useCreateLeague();
   return (
-    <Card title="Start a new league" className="max-w-md mx-auto">
-      <p className="text-sm text-slate-600 mb-3">Generate 4 teams and an 18-game schedule.</p>
-      <div className="flex gap-2 items-end">
-        <label className="flex-1">
-          <span className="block text-xs text-slate-500">Seed (optional)</span>
-          <input
-            className="border rounded px-2 py-1 w-full"
-            value={seed}
-            onChange={(e) => setSeed(e.target.value)}
-            placeholder="random"
-          />
-        </label>
-        <Button disabled={create.isPending} onClick={() => create.mutate(seed ? Number(seed) : undefined)}>
-          {create.isPending ? "Generating…" : "Create league"}
-        </Button>
+    <div
+      className="card"
+      style={{ width: "100%", maxWidth: 480, padding: 0, overflow: "hidden" }}
+    >
+      <div className="ribbon-h">
+        <span className="accent" />
+        Continental Hockey League · Manager '26
       </div>
-    </Card>
+      <div style={{ padding: "20px 22px" }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Start a new league</h2>
+        <p style={{ color: "var(--ink-3)", fontSize: 12, marginTop: 6 }}>
+          Generate 4 teams and an 18-game schedule.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: 14 }}>
+          <label style={{ flex: 1, fontSize: 11, color: "var(--ink-3)", fontWeight: 600 }}>
+            <span style={{ display: "block", marginBottom: 4, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Seed
+            </span>
+            <input
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+              placeholder="random"
+              style={{
+                width: "100%",
+                border: "1px solid var(--line)",
+                background: "var(--surface)",
+                borderRadius: 4,
+                padding: "8px 10px",
+                font: "500 13px/1.2 'Inter', sans-serif",
+                color: "var(--ink)",
+              }}
+            />
+          </label>
+          <button
+            className="btn btn-primary"
+            disabled={create.isPending}
+            onClick={() => create.mutate(seed ? Number(seed) : undefined)}
+          >
+            {create.isPending ? "Generating…" : "Create League"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };

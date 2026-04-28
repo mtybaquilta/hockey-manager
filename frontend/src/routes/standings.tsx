@@ -1,41 +1,86 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card } from "../components/Card";
+import { Logo } from "../components/Logo";
+import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
-import { TeamBadge } from "../components/TeamBadge";
 import { useLeague } from "../queries/league";
 import { useStandings } from "../queries/standings";
+import { useTeams } from "../queries/teams";
 
 const StandingsPage = () => {
   const s = useStandings();
   const l = useLeague();
-  if (!s.data || !l.data) return <div>Loading…</div>;
+  const teams = useTeams();
+  if (!s.data || !l.data || !teams.data) {
+    return <Shell crumbs={["Continental Hockey League", "Standings"]}>Loading…</Shell>;
+  }
   const userId = l.data.user_team_id;
+  const playoffCut = Math.min(4, s.data.rows.length - 1);
+
   return (
-    <Card title="Standings">
-      <Table>
-        <thead>
-          <tr>
-            <Th>Team</Th><Th>GP</Th><Th>W</Th><Th>L</Th><Th>OTL</Th>
-            <Th>PTS</Th><Th>GF</Th><Th>GA</Th><Th>DIFF</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {s.data.rows.map((r) => (
-            <tr key={r.team_id} className={r.team_id === userId ? "bg-blue-50" : ""}>
-              <Td><TeamBadge teamId={r.team_id} /></Td>
-              <Td>{r.games_played}</Td>
-              <Td>{r.wins}</Td>
-              <Td>{r.losses}</Td>
-              <Td>{r.ot_losses}</Td>
-              <Td className="font-semibold">{r.points}</Td>
-              <Td>{r.goals_for}</Td>
-              <Td>{r.goals_against}</Td>
-              <Td>{r.goals_for - r.goals_against}</Td>
+    <Shell crumbs={["Continental Hockey League", "Standings"]}>
+      <div className="section-h">
+        <h1>League Standings</h1>
+        <span className="sub">
+          {s.data.rows.reduce((a, r) => a + r.games_played, 0) / 2} games played · top{" "}
+          {playoffCut + 1} qualify
+        </span>
+      </div>
+
+      <Card>
+        <Table>
+          <thead>
+            <tr>
+              <Th style={{ width: 32 }}></Th>
+              <Th>Team</Th>
+              <Th className="num">GP</Th>
+              <Th className="num">W</Th>
+              <Th className="num">L</Th>
+              <Th className="num">OTL</Th>
+              <Th className="num">PTS</Th>
+              <Th className="num">GF</Th>
+              <Th className="num">GA</Th>
+              <Th className="num">DIFF</Th>
+              <Th className="num">PT%</Th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-    </Card>
+          </thead>
+          <tbody>
+            {s.data.rows.map((r, i) => {
+              const t = teams.data!.find((x) => x.id === r.team_id);
+              if (!t) return null;
+              const diff = r.goals_for - r.goals_against;
+              const pct = r.games_played ? (r.points / (r.games_played * 2)).toFixed(3).slice(1) : "—";
+              return (
+                <tr key={r.team_id} className={r.team_id === userId ? "me" : ""}>
+                  <Td className="rank">{i + 1}</Td>
+                  <Td>
+                    <span className="team-row">
+                      <Logo teamId={t.id} size={22} />
+                      <span className="nm">{t.name}</span>
+                      <span className="ab">{t.abbreviation}</span>
+                    </span>
+                  </Td>
+                  <Td className="num">{r.games_played}</Td>
+                  <Td className="num">{r.wins}</Td>
+                  <Td className="num">{r.losses}</Td>
+                  <Td className="num">{r.ot_losses}</Td>
+                  <Td className="num">
+                    <b>{r.points}</b>
+                  </Td>
+                  <Td className="num">{r.goals_for}</Td>
+                  <Td className="num">{r.goals_against}</Td>
+                  <Td className="num" style={{ color: diff >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
+                    {diff > 0 ? "+" : ""}
+                    {diff}
+                  </Td>
+                  <Td className="num">{pct}</Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      </Card>
+    </Shell>
   );
 };
 

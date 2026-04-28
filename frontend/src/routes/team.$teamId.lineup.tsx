@@ -1,36 +1,47 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { HmApiError } from "../api/client";
-import type { LineupSlots, Position } from "../api/types";
-import { Button } from "../components/Button";
+import type { LineupSlots, Position, Skater, Goalie } from "../api/types";
 import { Card } from "../components/Card";
-import { InlineError } from "../components/Toast";
+import { Shell } from "../components/Shell";
 import { useLeague } from "../queries/league";
 import { useLineup, useUpdateLineup } from "../queries/lineup";
 import { useRoster } from "../queries/teams";
+import { attrClass } from "../lib/team-colors";
 
-const FORWARD_SLOTS: { key: keyof LineupSlots; pos: Position; label: string }[] = [
-  { key: "line1_lw_id", pos: "LW", label: "Line 1 LW" },
-  { key: "line1_c_id", pos: "C", label: "Line 1 C" },
-  { key: "line1_rw_id", pos: "RW", label: "Line 1 RW" },
-  { key: "line2_lw_id", pos: "LW", label: "Line 2 LW" },
-  { key: "line2_c_id", pos: "C", label: "Line 2 C" },
-  { key: "line2_rw_id", pos: "RW", label: "Line 2 RW" },
-  { key: "line3_lw_id", pos: "LW", label: "Line 3 LW" },
-  { key: "line3_c_id", pos: "C", label: "Line 3 C" },
-  { key: "line3_rw_id", pos: "RW", label: "Line 3 RW" },
-  { key: "line4_lw_id", pos: "LW", label: "Line 4 LW" },
-  { key: "line4_c_id", pos: "C", label: "Line 4 C" },
-  { key: "line4_rw_id", pos: "RW", label: "Line 4 RW" },
+type SlotDef = { key: keyof LineupSlots; label: string; pos: Position | "G" };
+const FORWARD_SLOTS: SlotDef[] = [
+  { key: "line1_lw_id", pos: "LW", label: "L1" },
+  { key: "line1_c_id", pos: "C", label: "L1" },
+  { key: "line1_rw_id", pos: "RW", label: "L1" },
+  { key: "line2_lw_id", pos: "LW", label: "L2" },
+  { key: "line2_c_id", pos: "C", label: "L2" },
+  { key: "line2_rw_id", pos: "RW", label: "L2" },
+  { key: "line3_lw_id", pos: "LW", label: "L3" },
+  { key: "line3_c_id", pos: "C", label: "L3" },
+  { key: "line3_rw_id", pos: "RW", label: "L3" },
+  { key: "line4_lw_id", pos: "LW", label: "L4" },
+  { key: "line4_c_id", pos: "C", label: "L4" },
+  { key: "line4_rw_id", pos: "RW", label: "L4" },
 ];
-const DEFENSE_SLOTS: { key: keyof LineupSlots; pos: Position; label: string }[] = [
-  { key: "pair1_ld_id", pos: "LD", label: "Pair 1 LD" },
-  { key: "pair1_rd_id", pos: "RD", label: "Pair 1 RD" },
-  { key: "pair2_ld_id", pos: "LD", label: "Pair 2 LD" },
-  { key: "pair2_rd_id", pos: "RD", label: "Pair 2 RD" },
-  { key: "pair3_ld_id", pos: "LD", label: "Pair 3 LD" },
-  { key: "pair3_rd_id", pos: "RD", label: "Pair 3 RD" },
+const DEF_SLOTS: SlotDef[] = [
+  { key: "pair1_ld_id", pos: "LD", label: "D1" },
+  { key: "pair1_rd_id", pos: "RD", label: "D1" },
+  { key: "pair2_ld_id", pos: "LD", label: "D2" },
+  { key: "pair2_rd_id", pos: "RD", label: "D2" },
+  { key: "pair3_ld_id", pos: "LD", label: "D3" },
+  { key: "pair3_rd_id", pos: "RD", label: "D3" },
 ];
+const GOALIE_SLOTS: SlotDef[] = [
+  { key: "starting_goalie_id", pos: "G", label: "Starter" },
+  { key: "backup_goalie_id", pos: "G", label: "Backup" },
+];
+const ALL_SLOTS = [...FORWARD_SLOTS, ...DEF_SLOTS, ...GOALIE_SLOTS];
+
+const skaterOvr = (p: Skater) =>
+  Math.round(0.25 * p.shooting + 0.2 * p.passing + 0.2 * p.skating + 0.2 * p.defense + 0.15 * p.physical);
+const goalieOvr = (g: Goalie) =>
+  Math.round(0.3 * g.reflexes + 0.25 * g.positioning + 0.2 * g.rebound_control + 0.15 * g.puck_handling + 0.1 * g.mental);
 
 const LineupEditor = () => {
   const { teamId } = Route.useParams();
@@ -41,7 +52,8 @@ const LineupEditor = () => {
   const update = useUpdateLineup(id);
   const nav = useNavigate();
   const [draft, setDraft] = useState<LineupSlots | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [active, setActive] = useState<keyof LineupSlots>("line1_lw_id");
+  const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   useEffect(() => {
     if (lineup.data) {
@@ -50,91 +62,227 @@ const LineupEditor = () => {
     }
   }, [lineup.data]);
 
-  if (!league.data || !roster.data || !draft) return <div>Loading…</div>;
-  if (league.data.user_team_id !== id) return <div>This is not your team.</div>;
+  if (!league.data || !roster.data || !draft) {
+    return <Shell crumbs={["Continental Hockey League", "My Team", "Lineup Editor"]}>Loading…</Shell>;
+  }
+  if (league.data.user_team_id !== id) {
+    return (
+      <Shell crumbs={["Continental Hockey League", "My Team", "Lineup Editor"]}>
+        <div style={{ color: "var(--ink-3)" }}>This is not your team.</div>
+      </Shell>
+    );
+  }
 
-  const set = (k: keyof LineupSlots, v: number) => setDraft((d) => ({ ...d!, [k]: v }));
-  const skatersByPos = (p: Position) => roster.data!.skaters.filter((s) => s.position === p);
+  const skaterIds = [...FORWARD_SLOTS, ...DEF_SLOTS].map((s) => draft[s.key]);
+  const goalieIds = GOALIE_SLOTS.map((s) => draft[s.key]);
+  const skaterDups = new Set(
+    skaterIds.filter((v, i) => skaterIds.indexOf(v) !== i),
+  );
+  const goalieDup = goalieIds[0] === goalieIds[1];
+  const dupSlotKeys = new Set<keyof LineupSlots>();
+  [...FORWARD_SLOTS, ...DEF_SLOTS].forEach((s) => {
+    if (skaterDups.has(draft[s.key])) dupSlotKeys.add(s.key);
+  });
+  if (goalieDup) GOALIE_SLOTS.forEach((s) => dupSlotKeys.add(s.key));
 
-  const skaterIds = [...FORWARD_SLOTS, ...DEFENSE_SLOTS].map((s) => draft[s.key]);
-  const dupSkater = new Set(skaterIds).size !== skaterIds.length;
-  const dupGoalie = draft.starting_goalie_id === draft.backup_goalie_id;
+  const activeDef = ALL_SLOTS.find((s) => s.key === active)!;
+  const usedSet = new Set<number>(Object.values(draft));
+  const candidates =
+    activeDef.pos === "G"
+      ? roster.data.goalies.map((g) => ({ id: g.id, name: g.name, age: g.age, ovr: goalieOvr(g), pos: "G" as const }))
+      : roster.data.skaters
+          .filter((s) => s.position === activeDef.pos)
+          .map((s) => ({ id: s.id, name: s.name, age: s.age, ovr: skaterOvr(s), pos: s.position }));
+
+  const playerName = (id: number) =>
+    roster.data!.skaters.find((s) => s.id === id)?.name ?? roster.data!.goalies.find((g) => g.id === id)?.name;
+  const playerOvr = (id: number) => {
+    const sk = roster.data!.skaters.find((s) => s.id === id);
+    if (sk) return skaterOvr(sk);
+    const g = roster.data!.goalies.find((g) => g.id === id);
+    return g ? goalieOvr(g) : null;
+  };
+
+  const assign = (newId: number) => setDraft({ ...draft, [active]: newId });
 
   const submit = async () => {
-    setErr(null);
+    if (dupSlotKeys.size) {
+      setToast({ type: "err", msg: "Fix duplicate slot assignments before saving." });
+      setTimeout(() => setToast(null), 4500);
+      return;
+    }
     try {
       await update.mutateAsync(draft);
-      nav({ to: "/team/$teamId", params: { teamId } });
+      setToast({ type: "ok", msg: "Lineup saved." });
+      setTimeout(() => nav({ to: "/team/$teamId", params: { teamId } }), 600);
     } catch (e) {
-      if (e instanceof HmApiError) setErr(`${e.code}: ${e.message}`);
-      else throw e;
+      setToast({ type: "err", msg: e instanceof HmApiError ? `${e.code}: ${e.message}` : String(e) });
+      setTimeout(() => setToast(null), 4500);
     }
   };
 
+  const Slot = ({ s }: { s: SlotDef }) => {
+    const v = draft[s.key];
+    const name = playerName(v);
+    const ovr = playerOvr(v);
+    const isActive = active === s.key;
+    const isDup = dupSlotKeys.has(s.key);
+    return (
+      <div
+        className={`slot ${!name ? "empty" : ""} ${isDup ? "dup" : ""}`}
+        onClick={() => setActive(s.key)}
+        style={{ outline: isActive ? "2px solid var(--navy-600)" : "none", outlineOffset: 1 }}
+      >
+        <span className="pos">{s.pos}</span>
+        {name ? (
+          <>
+            <span className="nm">{name}</span>
+            {ovr != null && <span className="ovr">{ovr}</span>}
+          </>
+        ) : (
+          <span className="nm" style={{ color: "var(--ink-4)", fontWeight: 500 }}>
+            Click to assign…
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-4 max-w-3xl">
-      <h2 className="text-xl font-bold">Lineup</h2>
-      <Card title="Forwards">
-        <div className="grid grid-cols-3 gap-2">
-          {FORWARD_SLOTS.map((s) => (
-            <label key={s.key} className="text-sm">
-              <span className="block text-slate-500">{s.label}</span>
-              <select
-                className="border rounded px-1 py-1 w-full"
-                value={draft[s.key]}
-                onChange={(e) => set(s.key, Number(e.target.value))}
+    <Shell
+      crumbs={["Continental Hockey League", "My Team", "Lineup Editor"]}
+      topRight={
+        <button className="btn btn-primary" disabled={update.isPending} onClick={submit}>
+          {update.isPending ? "Saving…" : "Save Lineup"}
+        </button>
+      }
+    >
+      <div className="section-h">
+        <h1>Lineup Editor</h1>
+        <span className="sub">Click a slot, then pick a player from the roster panel.</span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
+        <div>
+          <Card title="Forwards" className="!mb-3">
+            <div style={{ padding: "10px 14px" }}>
+              {[0, 1, 2, 3].map((L) => (
+                <div key={L} className="line-row">
+                  <div className="lbl">L{L + 1}</div>
+                  <Slot s={FORWARD_SLOTS[L * 3]} />
+                  <Slot s={FORWARD_SLOTS[L * 3 + 1]} />
+                  <Slot s={FORWARD_SLOTS[L * 3 + 2]} />
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card title="Defense + Goalies" className="mt-3">
+            <div style={{ padding: "10px 14px" }}>
+              {[0, 1, 2].map((P) => (
+                <div
+                  key={P}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "28px 1fr 1fr",
+                    gap: 8,
+                    alignItems: "center",
+                    padding: "4px 0",
+                  }}
+                >
+                  <div className="lbl" style={{ font: "800 10px/1 'Roboto Condensed'", color: "var(--ink-3)", letterSpacing: "0.10em" }}>
+                    D{P + 1}
+                  </div>
+                  <Slot s={DEF_SLOTS[P * 2]} />
+                  <Slot s={DEF_SLOTS[P * 2 + 1]} />
+                </div>
+              ))}
+              <div
+                style={{
+                  borderTop: "1px solid var(--line)",
+                  marginTop: 8,
+                  paddingTop: 10,
+                  display: "grid",
+                  gridTemplateColumns: "28px 1fr 1fr",
+                  gap: 8,
+                  alignItems: "center",
+                }}
               >
-                {skatersByPos(s.pos).map((sk) => (
-                  <option key={sk.id} value={sk.id}>{sk.name}</option>
-                ))}
-              </select>
-            </label>
-          ))}
+                <div className="lbl" style={{ font: "800 10px/1 'Roboto Condensed'", color: "var(--ink-3)", letterSpacing: "0.10em" }}>
+                  G
+                </div>
+                <Slot s={GOALIE_SLOTS[0]} />
+                <Slot s={GOALIE_SLOTS[1]} />
+              </div>
+            </div>
+          </Card>
         </div>
-      </Card>
-      <Card title="Defense">
-        <div className="grid grid-cols-2 gap-2">
-          {DEFENSE_SLOTS.map((s) => (
-            <label key={s.key} className="text-sm">
-              <span className="block text-slate-500">{s.label}</span>
-              <select
-                className="border rounded px-1 py-1 w-full"
-                value={draft[s.key]}
-                onChange={(e) => set(s.key, Number(e.target.value))}
-              >
-                {skatersByPos(s.pos).map((sk) => (
-                  <option key={sk.id} value={sk.id}>{sk.name}</option>
-                ))}
-              </select>
-            </label>
-          ))}
+
+        <Card
+          title={`Available · ${activeDef.pos}`}
+          sub={`Slot ${activeDef.label} ${activeDef.pos}`}
+        >
+          <div style={{ maxHeight: 540, overflow: "auto" }}>
+            {candidates.map((p) => {
+              const taken = usedSet.has(p.id) && draft[active] !== p.id;
+              const selected = draft[active] === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className="bench-pl"
+                  onClick={() => !taken && assign(p.id)}
+                  style={{
+                    background: selected ? "rgba(220,38,38,.10)" : "",
+                    opacity: taken ? 0.5 : 1,
+                    cursor: taken ? "not-allowed" : "pointer",
+                  }}
+                >
+                  <span className="num">·</span>
+                  <div>
+                    <div className="nm">
+                      {p.name}
+                      {taken && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            color: "var(--red)",
+                            marginLeft: 6,
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                          }}
+                        >
+                          USED
+                        </span>
+                      )}
+                    </div>
+                    <div className="meta">
+                      {p.pos} · Age {p.age}
+                    </div>
+                  </div>
+                  <div className={`chip ${attrClass(p.ovr)}`}>{p.ovr}</div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {toast && (
+        <div className="toast" style={{ borderLeftColor: toast.type === "ok" ? "var(--green)" : "var(--red)" }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="7" cy="7" r="6" />
+            {toast.type === "ok" ? (
+              <path d="M4 7l2 2 4-4" />
+            ) : (
+              <>
+                <path d="M7 4v3" />
+                <circle cx="7" cy="9.5" r=".5" fill="currentColor" />
+              </>
+            )}
+          </svg>
+          {toast.msg}
         </div>
-      </Card>
-      <Card title="Goalies">
-        <div className="grid grid-cols-2 gap-2">
-          {(["starting_goalie_id", "backup_goalie_id"] as const).map((k) => (
-            <label key={k} className="text-sm">
-              <span className="block text-slate-500">{k === "starting_goalie_id" ? "Starter" : "Backup"}</span>
-              <select
-                className="border rounded px-1 py-1 w-full"
-                value={draft[k]}
-                onChange={(e) => set(k, Number(e.target.value))}
-              >
-                {roster.data!.goalies.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </div>
-      </Card>
-      {dupSkater && <InlineError>A skater appears in multiple slots.</InlineError>}
-      {dupGoalie && <InlineError>Starter and backup goalie must differ.</InlineError>}
-      {err && <InlineError>{err}</InlineError>}
-      <Button onClick={submit} disabled={dupSkater || dupGoalie || update.isPending}>
-        {update.isPending ? "Saving…" : "Save lineup"}
-      </Button>
-    </div>
+      )}
+    </Shell>
   );
 };
 

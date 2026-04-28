@@ -116,3 +116,8 @@ class SimGameResult:
     events: tuple[SimEvent, ...]
     skater_stats: tuple[SimSkaterStat, ...]
     goalie_stats: tuple[SimGoalieStat, ...]
+    # 4 entries: P1, P2, P3, OT. Shootout deciding goal is not counted here.
+    home_goals_by_period: tuple[int, int, int, int]
+    away_goals_by_period: tuple[int, int, int, int]
+    home_shots_by_period: tuple[int, int, int, int]
+    away_shots_by_period: tuple[int, int, int, int]

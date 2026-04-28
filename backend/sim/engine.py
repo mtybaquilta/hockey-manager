@@ -366,7 +366,16 @@ def _simulate_phase(
 
 def _aggregate_stats(
     events: tuple[SimEvent, ...],
-) -> tuple[tuple[SimSkaterStat, ...], tuple[SimGoalieStat, ...], int, int]:
+) -> tuple[
+    tuple[SimSkaterStat, ...],
+    tuple[SimGoalieStat, ...],
+    int,
+    int,
+    tuple[int, int, int, int],
+    tuple[int, int, int, int],
+    tuple[int, int, int, int],
+    tuple[int, int, int, int],
+]:
     skater_goals: dict[int, int] = defaultdict(int)
     skater_assists: dict[int, int] = defaultdict(int)
     skater_shots: dict[int, int] = defaultdict(int)
@@ -374,19 +383,31 @@ def _aggregate_stats(
     goalie_saves: dict[int, int] = defaultdict(int)
     goalie_ga: dict[int, int] = defaultdict(int)
     home_shots = away_shots = 0
+    home_goals_p = [0, 0, 0, 0]
+    away_goals_p = [0, 0, 0, 0]
+    home_shots_p = [0, 0, 0, 0]
+    away_shots_p = [0, 0, 0, 0]
 
     for e in events:
+        # Period 1..3 regulation, 4 = OT. Clamp for safety.
+        pidx = max(1, min(4, e.period)) - 1
         if e.kind in (EventKind.SAVE, EventKind.GOAL):
             if e.primary_skater_id is not None:
                 skater_shots[e.primary_skater_id] += 1
             if e.team_is_home:
                 home_shots += 1
+                home_shots_p[pidx] += 1
             else:
                 away_shots += 1
+                away_shots_p[pidx] += 1
         if e.kind == EventKind.SAVE and e.goalie_id is not None:
             goalie_sa[e.goalie_id] += 1
             goalie_saves[e.goalie_id] += 1
         if e.kind == EventKind.GOAL:
+            if e.team_is_home:
+                home_goals_p[pidx] += 1
+            else:
+                away_goals_p[pidx] += 1
             if e.primary_skater_id is not None:
                 skater_goals[e.primary_skater_id] += 1
             if e.assist1_id is not None:
@@ -417,7 +438,16 @@ def _aggregate_stats(
         )
         for gid in sorted(goalie_ids)
     )
-    return skater_stats, goalie_stats, home_shots, away_shots
+    return (
+        skater_stats,
+        goalie_stats,
+        home_shots,
+        away_shots,
+        tuple(home_goals_p),
+        tuple(away_goals_p),
+        tuple(home_shots_p),
+        tuple(away_shots_p),
+    )
 
 
 def simulate_game(input: SimGameInput) -> SimGameResult:
@@ -462,7 +492,16 @@ def simulate_game(input: SimGameInput) -> SimGameResult:
             result_type = ResultType.SO
 
     events_t = tuple(events)
-    skater_stats, goalie_stats, home_shots, away_shots = _aggregate_stats(events_t)
+    (
+        skater_stats,
+        goalie_stats,
+        home_shots,
+        away_shots,
+        home_goals_p,
+        away_goals_p,
+        home_shots_p,
+        away_shots_p,
+    ) = _aggregate_stats(events_t)
 
     return SimGameResult(
         home_score=score[0],
@@ -473,4 +512,8 @@ def simulate_game(input: SimGameInput) -> SimGameResult:
         events=events_t,
         skater_stats=skater_stats,
         goalie_stats=goalie_stats,
+        home_goals_by_period=home_goals_p,
+        away_goals_by_period=away_goals_p,
+        home_shots_by_period=home_shots_p,
+        away_shots_by_period=away_shots_p,
     )

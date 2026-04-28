@@ -31,6 +31,18 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
     goalie_names: dict[int, str] = {
         g_.id: g_.name for g_ in db.query(Goalie).filter(Goalie.id.in_(goalie_ids)).all()
     } if goalie_ids else {}
+    home_goals_p = [0, 0, 0, 0]
+    away_goals_p = [0, 0, 0, 0]
+    home_shots_p = [0, 0, 0, 0]
+    away_shots_p = [0, 0, 0, 0]
+    for e in events:
+        pidx = max(1, min(4, e.period)) - 1
+        is_home = e.team_id == g.home_team_id
+        if e.kind in ("save", "goal"):
+            (home_shots_p if is_home else away_shots_p)[pidx] += 1
+        if e.kind == "goal":
+            (home_goals_p if is_home else away_goals_p)[pidx] += 1
+
     return GameDetailOut(
         id=g.id,
         matchday=g.matchday,
@@ -82,4 +94,8 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
             )
             for s in g_stats
         ],
+        home_goals_by_period=home_goals_p,
+        away_goals_by_period=away_goals_p,
+        home_shots_by_period=home_shots_p,
+        away_shots_by_period=away_shots_p,
     )

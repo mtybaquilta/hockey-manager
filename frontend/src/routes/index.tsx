@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Card } from "../components/Card";
+import { Logo, TeamRow } from "../components/Logo";
 import { ResultBadge } from "../components/ResultBadge";
+import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
-import { TeamBadge } from "../components/TeamBadge";
 import { useLeague } from "../queries/league";
 import { useSchedule } from "../queries/schedule";
+import { useAdvance, useSeasonStatus } from "../queries/season";
 import { useStandings } from "../queries/standings";
 import { useTeams } from "../queries/teams";
 
@@ -13,53 +15,208 @@ const Dashboard = () => {
   const schedule = useSchedule();
   const standings = useStandings();
   const teams = useTeams();
-  if (!league.data || !schedule.data || !standings.data || !teams.data) return <div>Loading…</div>;
+  const status = useSeasonStatus();
+  const advance = useAdvance();
+  const nav = useNavigate();
+
+  if (!league.data || !schedule.data || !standings.data || !teams.data) {
+    return <Shell crumbs={["Continental Hockey League", "Dashboard"]}>Loading…</Shell>;
+  }
   const userId = league.data.user_team_id;
-  if (userId == null) return <div>Pick a team to begin.</div>;
+  if (userId == null) {
+    return (
+      <Shell crumbs={["Continental Hockey League", "Dashboard"]}>
+        <div style={{ color: "var(--ink-3)" }}>Pick a team to begin.</div>
+      </Shell>
+    );
+  }
+  const me = teams.data.find((t) => t.id === userId)!;
+  const myRow = standings.data.rows.find((r) => r.team_id === userId);
+  const myRank = standings.data.rows.findIndex((r) => r.team_id === userId) + 1;
   const userGames = schedule.data.games.filter((g) => g.home_team_id === userId || g.away_team_id === userId);
   const next = userGames.find((g) => g.status === "scheduled");
-  const last = [...userGames].reverse().find((g) => g.status === "simulated");
+  const recent = userGames.filter((g) => g.status === "simulated").slice(-6).reverse();
+  const opp = next ? (next.home_team_id === userId ? next.away_team_id : next.home_team_id) : null;
+  const oppT = opp != null ? teams.data.find((t) => t.id === opp) : undefined;
+  const oppRow = opp != null ? standings.data.rows.find((r) => r.team_id === opp) : undefined;
+  const isAway = next ? next.away_team_id === userId : false;
+  const top5 = standings.data.rows.slice(0, 5);
+  const diff = myRow ? myRow.goals_for - myRow.goals_against : 0;
+  const seasonComplete = status.data?.status === "complete";
+
+  const onAdvance = () =>
+    advance.mutate(undefined, {
+      onSuccess: (r) => {
+        if (r.season_status === "complete") nav({ to: "/season-complete" });
+      },
+    });
+
+  const ord = (n: number) => (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th");
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card title="Next game">
-        {next ? (
-          <div>
-            vs <TeamBadge teamId={next.home_team_id === userId ? next.away_team_id : next.home_team_id} /> (
-            {next.home_team_id === userId ? "home" : "away"}) — matchday {next.matchday}
-          </div>
-        ) : (
-          <div className="text-slate-500">No scheduled games.</div>
-        )}
-      </Card>
-      <Card title="Last result">
-        {last ? (
-          <Link to="/game/$gameId" params={{ gameId: String(last.id) }} className="hover:underline">
-            <TeamBadge teamId={last.home_team_id} /> {last.home_score} – {last.away_score}{" "}
-            <TeamBadge teamId={last.away_team_id} /> <ResultBadge type={last.result_type} />
+    <Shell crumbs={["Continental Hockey League", "Dashboard"]}>
+      <div className="section-h">
+        <h1>Dashboard</h1>
+        <span className="sub">{me.name} · '25-26 Regular Season</span>
+        <div style={{ flex: 1 }} />
+        {seasonComplete ? (
+          <Link to="/season-complete" className="btn btn-primary">
+            Season complete →
           </Link>
         ) : (
-          <div className="text-slate-500">No results yet.</div>
+          <button className="btn btn-primary" disabled={advance.isPending} onClick={onAdvance}>
+            {advance.isPending ? "Simulating…" : "Sim to Next Matchday →"}
+          </button>
         )}
-      </Card>
-      <Card title="Standings (top 4)" className="md:col-span-2">
-        <Table>
-          <thead>
-            <tr>
-              <Th>Team</Th><Th>GP</Th><Th>W</Th><Th>L</Th><Th>OTL</Th><Th>PTS</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {standings.data.rows.slice(0, 4).map((r) => (
-              <tr key={r.team_id} className={r.team_id === userId ? "bg-blue-50" : ""}>
-                <Td><TeamBadge teamId={r.team_id} /></Td>
-                <Td>{r.games_played}</Td><Td>{r.wins}</Td><Td>{r.losses}</Td>
-                <Td>{r.ot_losses}</Td><Td>{r.points}</Td>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
+        <div className="next-card">
+          <div className="label">Next Game · Matchday {next?.matchday ?? "—"}</div>
+          {next && oppT ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
+                <Logo teamId={oppT.id} size={44} />
+                <div>
+                  <div className="opp">
+                    {isAway ? "@ " : "vs "}
+                    {oppT.name}
+                  </div>
+                  <div className="when">
+                    {oppT.abbreviation}
+                    {oppRow ? ` · ${oppRow.wins}-${oppRow.losses}-${oppRow.ot_losses}` : ""}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: 10, color: "rgba(255,255,255,.7)" }}>No upcoming games.</div>
+          )}
+        </div>
+        <div className="k-stat">
+          <div className="lbl">Record</div>
+          <div className="val">
+            {myRow ? `${myRow.wins}-${myRow.losses}-${myRow.ot_losses}` : "—"}
+          </div>
+          <div className={`delta ${diff < 0 ? "bad" : ""}`}>
+            {diff > 0 ? "+" : ""}
+            {diff} differential
+          </div>
+        </div>
+        <div className="k-stat">
+          <div className="lbl">League Rank</div>
+          <div className="val">
+            {myRank || "—"}
+            {myRank ? <span style={{ fontSize: 14, color: "var(--ink-3)" }}>{ord(myRank)}</span> : null}
+          </div>
+          <div className="delta">{myRow?.points ?? 0} PTS</div>
+        </div>
+        <div className="k-stat">
+          <div className="lbl">Games Played</div>
+          <div className="val">{myRow?.games_played ?? 0}</div>
+          <div className="delta">{recent.length} recent results</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
+        <Card
+          title="Recent Results"
+          sub="Last 6"
+          link={
+            <Link to="/schedule" className="link">
+              Schedule →
+            </Link>
+          }
+        >
+          <Table>
+            <tbody>
+              {recent.length === 0 && (
+                <tr>
+                  <Td colSpan={6} style={{ color: "var(--ink-3)", textAlign: "center", padding: 20 }}>
+                    No results yet.
+                  </Td>
+                </tr>
+              )}
+              {recent.map((g) => {
+                const meIsHome = g.home_team_id === userId;
+                const myScore = meIsHome ? g.home_score : g.away_score;
+                const oppScore = meIsHome ? g.away_score : g.home_score;
+                const won = (myScore ?? 0) > (oppScore ?? 0);
+                return (
+                  <tr
+                    key={g.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => nav({ to: "/game/$gameId", params: { gameId: String(g.id) } })}
+                  >
+                    <Td style={{ width: 70, color: "var(--ink-3)", fontSize: 11 }}>MD {g.matchday}</Td>
+                    <Td>
+                      <TeamRow teamId={g.away_team_id} />
+                    </Td>
+                    <Td className="num">{g.away_score}</Td>
+                    <Td style={{ width: 8, color: "var(--ink-4)" }}>at</Td>
+                    <Td>
+                      <TeamRow teamId={g.home_team_id} />
+                    </Td>
+                    <Td className="num">{g.home_score}</Td>
+                    <Td style={{ width: 50 }}>
+                      <ResultBadge type={g.result_type} />
+                    </Td>
+                    <Td style={{ width: 24 }}>
+                      <span className={`tag ${won ? "tag-w" : "tag-l"}`}>{won ? "W" : "L"}</span>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Card>
+        <Card
+          title="Standings"
+          sub="Top 5"
+          link={
+            <Link to="/standings" className="link">
+              Full →
+            </Link>
+          }
+        >
+          <Table>
+            <thead>
+              <tr>
+                <Th></Th>
+                <Th>Team</Th>
+                <Th className="num">GP</Th>
+                <Th className="num">PTS</Th>
+                <Th className="num">DIFF</Th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card>
-    </div>
+            </thead>
+            <tbody>
+              {top5.map((r, i) => {
+                const d = r.goals_for - r.goals_against;
+                return (
+                  <tr key={r.team_id} className={r.team_id === userId ? "me" : ""}>
+                    <Td className="rank">{i + 1}</Td>
+                    <Td>
+                      <TeamRow teamId={r.team_id} />
+                    </Td>
+                    <Td className="num">{r.games_played}</Td>
+                    <Td className="num">
+                      <b>{r.points}</b>
+                    </Td>
+                    <Td
+                      className="num"
+                      style={{ color: d >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }}
+                    >
+                      {d > 0 ? "+" : ""}
+                      {d}
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Card>
+      </div>
+    </Shell>
   );
 };
 

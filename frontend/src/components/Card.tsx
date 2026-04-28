@@ -5,13 +5,24 @@ export const Card = ({
   children,
   className,
   title,
+  sub,
+  link,
 }: {
   children: ReactNode;
   className?: string;
-  title?: string;
+  title?: ReactNode;
+  sub?: ReactNode;
+  link?: ReactNode;
 }) => (
-  <div className={cn("rounded-lg border bg-white shadow-sm p-4", className)}>
-    {title && <h3 className="font-semibold mb-2">{title}</h3>}
+  <div className={cn("card", className)}>
+    {(title || sub || link) && (
+      <div className="card-h">
+        {title && <span className="title">{title}</span>}
+        {sub && <span className="sub">{sub}</span>}
+        <span className="grow" />
+        {link}
+      </div>
+    )}
     {children}
   </div>
 );

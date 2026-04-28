@@ -59,6 +59,10 @@ export interface GameDetail {
   home_shots: number | null; away_shots: number | null;
   result_type: ResultType | null;
   events: GameEvent[]; skater_stats: SkaterStat[]; goalie_stats: GoalieStat[];
+  home_goals_by_period: number[];
+  away_goals_by_period: number[];
+  home_shots_by_period: number[];
+  away_shots_by_period: number[];
 }
 export interface AdvanceResponse {
   advanced_game_ids: number[]; current_matchday: number; season_status: "active" | "complete";
