@@ -20,6 +20,13 @@ class EventKind(str, Enum):
     SHOT = "shot"
     SAVE = "save"
     GOAL = "goal"
+    PENALTY = "penalty"
+
+
+class Strength(str, Enum):
+    EV = "EV"
+    PP = "PP"
+    SH = "SH"
 
 
 @dataclass(frozen=True)
@@ -65,12 +72,15 @@ class SimGameInput:
 @dataclass(frozen=True)
 class SimEvent:
     tick: int
+    period: int
     kind: EventKind
     team_is_home: bool
+    strength: Strength | None
     primary_skater_id: int | None
     assist1_id: int | None
     assist2_id: int | None
     goalie_id: int | None
+    penalty_duration_ticks: int | None = None
 
 
 @dataclass(frozen=True)

@@ -39,12 +39,18 @@ export interface StandingRow {
 }
 export interface Standings { rows: StandingRow[]; }
 export interface GameEvent {
-  tick: number; kind: "shot" | "save" | "goal"; team_id: number;
-  primary_skater_id: number | null; assist1_id: number | null; assist2_id: number | null;
-  goalie_id: number | null;
+  tick: number; period: number;
+  kind: "shot" | "save" | "goal" | "penalty";
+  strength: "EV" | "PP" | "SH" | null;
+  team_id: number;
+  primary_skater_id: number | null; primary_skater_name: string | null;
+  assist1_id: number | null; assist1_name: string | null;
+  assist2_id: number | null; assist2_name: string | null;
+  goalie_id: number | null; goalie_name: string | null;
+  penalty_duration_ticks: number | null;
 }
-export interface SkaterStat { skater_id: number; goals: number; assists: number; shots: number; }
-export interface GoalieStat { goalie_id: number; shots_against: number; saves: number; goals_against: number; }
+export interface SkaterStat { skater_id: number; skater_name: string; goals: number; assists: number; shots: number; }
+export interface GoalieStat { goalie_id: number; goalie_name: string; shots_against: number; saves: number; goals_against: number; }
 export interface GameDetail {
   id: number; matchday: number; home_team_id: number; away_team_id: number;
   status: "scheduled" | "simulated";
@@ -57,4 +63,28 @@ export interface AdvanceResponse {
   advanced_game_ids: number[]; current_matchday: number; season_status: "active" | "complete";
 }
 export interface SeasonStatus { current_matchday: number; status: "active" | "complete"; }
+export interface SeasonStats {
+  games_played: number;
+  avg_total_goals_per_game: number;
+  avg_total_shots_per_game: number;
+  avg_home_goals: number;
+  avg_away_goals: number;
+  avg_home_shots: number;
+  avg_away_shots: number;
+  league_save_percentage: number;
+  league_shooting_percentage: number;
+  home_win_pct: number;
+  overtime_pct: number;
+  shootout_pct: number;
+  penalties_per_game: number;
+  pp_goals_per_game: number;
+  sh_goals_per_game: number;
+  top_scorer_name: string | null;
+  top_scorer_points: number;
+  top_scorer_goals: number;
+  top_scorer_assists: number;
+  top_goalie_name: string | null;
+  top_goalie_save_pct: number;
+  top_goalie_shots_against: number;
+}
 export interface ApiError { error_code: string; message: string; }

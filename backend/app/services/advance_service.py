@@ -150,12 +150,15 @@ def advance_matchday(db: Session) -> dict:
                 GameEvent(
                     game_id=g.id,
                     tick=e.tick,
+                    period=e.period,
                     kind=e.kind.value,
+                    strength=e.strength.value if e.strength is not None else None,
                     team_id=g.home_team_id if e.team_is_home else g.away_team_id,
                     primary_skater_id=e.primary_skater_id,
                     assist1_id=e.assist1_id,
                     assist2_id=e.assist2_id,
                     goalie_id=e.goalie_id,
+                    penalty_duration_ticks=e.penalty_duration_ticks,
                 )
             )
         for ss in result.skater_stats:

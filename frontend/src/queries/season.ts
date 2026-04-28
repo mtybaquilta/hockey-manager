@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { AdvanceResponse, SeasonStatus } from "../api/types";
+import type { AdvanceResponse, SeasonStats, SeasonStatus } from "../api/types";
 
 export const useSeasonStatus = () =>
   useQuery({ queryKey: ["season", "status"], queryFn: () => api.get<SeasonStatus>("/api/season/status") });
+
+export const useSeasonStats = () =>
+  useQuery({ queryKey: ["season", "stats"], queryFn: () => api.get<SeasonStats>("/api/season/stats") });
 
 export const useAdvance = () => {
   const qc = useQueryClient();
@@ -13,6 +16,7 @@ export const useAdvance = () => {
       qc.invalidateQueries({ queryKey: ["schedule"] });
       qc.invalidateQueries({ queryKey: ["standings"] });
       qc.invalidateQueries({ queryKey: ["season", "status"] });
+      qc.invalidateQueries({ queryKey: ["season", "stats"] });
       qc.invalidateQueries({ queryKey: ["league"] });
       qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "game" });
     },

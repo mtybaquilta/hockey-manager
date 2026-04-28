@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Table, Td, Th } from "../components/Table";
 import { useLeague } from "../queries/league";
@@ -9,6 +9,9 @@ const TeamPage = () => {
   const id = Number(teamId);
   const roster = useRoster(id);
   const league = useLeague();
+  const matchRoute = useMatchRoute();
+  const isChild = matchRoute({ to: "/team/$teamId/lineup", params: { teamId } });
+  if (isChild) return <Outlet />;
   if (!roster.data || !league.data) return <div>Loading…</div>;
   const isUser = league.data.user_team_id === id;
   return (

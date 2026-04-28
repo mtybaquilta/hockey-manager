@@ -26,7 +26,7 @@ const Box = () => {
           <tbody>
             {g.data.skater_stats.map((s) => (
               <tr key={s.skater_id}>
-                <Td>#{s.skater_id}</Td>
+                <Td>{s.skater_name}</Td>
                 <Td>{s.goals}</Td>
                 <Td>{s.assists}</Td>
                 <Td>{s.goals + s.assists}</Td>
@@ -44,7 +44,7 @@ const Box = () => {
           <tbody>
             {g.data.goalie_stats.map((s) => (
               <tr key={s.goalie_id}>
-                <Td>#{s.goalie_id}</Td>
+                <Td>{s.goalie_name}</Td>
                 <Td>{s.shots_against}</Td>
                 <Td>{s.saves}</Td>
                 <Td>{s.goals_against}</Td>
@@ -57,16 +57,21 @@ const Box = () => {
       <Card title="Events">
         <Table>
           <thead>
-            <tr><Th>Tick</Th><Th>Kind</Th><Th>Team</Th><Th>Player</Th><Th>Goalie</Th></tr>
+            <tr>
+              <Th>P</Th><Th>Tick</Th><Th>Kind</Th><Th>Str</Th>
+              <Th>Team</Th><Th>Player</Th><Th>Goalie</Th>
+            </tr>
           </thead>
           <tbody>
             {g.data.events.map((e, i) => (
               <tr key={i}>
+                <Td>{e.period > 3 ? "OT" : e.period}</Td>
                 <Td>{e.tick}</Td>
                 <Td>{e.kind}</Td>
+                <Td>{e.strength ?? "—"}</Td>
                 <Td><TeamBadge teamId={e.team_id} /></Td>
-                <Td>{e.primary_skater_id ?? "—"}</Td>
-                <Td>{e.goalie_id ?? "—"}</Td>
+                <Td>{e.primary_skater_name ?? "—"}</Td>
+                <Td>{e.goalie_name ?? "—"}</Td>
               </tr>
             ))}
           </tbody>

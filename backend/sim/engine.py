@@ -1,5 +1,22 @@
+"""Deterministic, period-aware game simulation.
+
+Tick model
+----------
+A regulation game is REGULATION_TICKS = 180 ticks split into 3 equal periods.
+Each tick represents roughly 20 seconds of play and produces at most one shot
+attempt. Overtime adds up to OT_MAX_TICKS more ticks; ties after that go to a
+shootout decided by team strength.
+
+Strength model
+--------------
+At every tick we look at active penalties on each team and classify the
+attacker as EV / PP / SH. PP boosts shot probability and slightly suppresses
+saves; SH does the opposite. Penalties are 4-tick minor (~2 minutes) and end
+early if the opposing team scores while the offender is in the box.
+"""
 import random
 from collections import defaultdict
+from dataclasses import dataclass
 
 from sim.models import (
     EventKind,
@@ -11,11 +28,48 @@ from sim.models import (
     SimLine,
     SimSkaterStat,
     SimTeamLineup,
+    Strength,
 )
-from sim.ratings import goalie_save_rating, line_offense, pair_defense
-from sim.rotation import REGULATION_TICKS, defense_pair_at_tick, forward_line_at_tick
+from sim.ratings import goalie_form_offset, goalie_save_rating, line_offense, pair_defense
+from sim.rotation import REGULATION_TICKS, defense_pair_at_tick, forward_line_at_tick, period_at_tick
 
-OT_MAX_TICKS = 5
+OT_MAX_TICKS = 15
+PENALTY_DURATION_TICKS = 4
+PENALTY_PER_TICK_PROB = 0.018
+
+# Strength multipliers applied to base shot probability.
+SHOT_PROB_PP = 1.7
+SHOT_PROB_SH = 0.5
+# Multiplier applied to base save probability when shooter is on the PP.
+SAVE_PROB_VS_PP = 0.88
+
+
+@dataclass
+class _PenaltyClock:
+    """Active penalties for one team, oldest first."""
+
+    remaining: list[int]  # ticks left, parallel to skater_ids
+    skater_ids: list[int]
+
+    def shorthanded(self) -> bool:
+        return bool(self.remaining)
+
+    def tick_down(self) -> None:
+        keep_r, keep_s = [], []
+        for r, sid in zip(self.remaining, self.skater_ids):
+            if r > 1:
+                keep_r.append(r - 1)
+                keep_s.append(sid)
+        self.remaining, self.skater_ids = keep_r, keep_s
+
+    def release_oldest(self) -> None:
+        if self.remaining:
+            self.remaining.pop(0)
+            self.skater_ids.pop(0)
+
+    def add(self, skater_id: int) -> None:
+        self.remaining.append(PENALTY_DURATION_TICKS)
+        self.skater_ids.append(skater_id)
 
 
 def _shot_probability(off: float, deff: float) -> float:
@@ -24,10 +78,25 @@ def _shot_probability(off: float, deff: float) -> float:
     return max(0.05, min(0.7, base + delta))
 
 
-def _save_probability(goalie: float, off: float) -> float:
-    base = 0.90
-    delta = (goalie - off) / 400.0
-    return max(0.6, min(0.98, base + delta))
+def _save_probability(goalie_rating: float, shooter_shooting: int) -> float:
+    base = 0.895
+    delta = (goalie_rating - shooter_shooting) / 400.0
+    return max(0.6, min(0.96, base + delta))
+
+
+def _strength_for(attacker_box: _PenaltyClock, defender_box: _PenaltyClock) -> Strength:
+    if attacker_box.shorthanded() and not defender_box.shorthanded():
+        return Strength.SH
+    if defender_box.shorthanded() and not attacker_box.shorthanded():
+        return Strength.PP
+    return Strength.EV
+
+
+def _on_ice(team: SimTeamLineup, tick: int) -> tuple[SimLine, SimLine]:
+    return (
+        team.forward_lines[forward_line_at_tick(tick)],
+        team.defense_pairs[defense_pair_at_tick(tick)],
+    )
 
 
 def _pick_weighted(rng: random.Random, items: list, weights: list[float]):
@@ -41,21 +110,51 @@ def _pick_weighted(rng: random.Random, items: list, weights: list[float]):
     return items[-1]
 
 
-def _on_ice(team: SimTeamLineup, tick: int) -> tuple[SimLine, SimLine]:
-    return (
-        team.forward_lines[forward_line_at_tick(tick)],
-        team.defense_pairs[defense_pair_at_tick(tick)],
-    )
+def _maybe_penalty(
+    rng: random.Random,
+    attackers: list,
+    defenders: list,
+    attacker_box: _PenaltyClock,
+    defender_box: _PenaltyClock,
+) -> tuple[bool, int | None]:
+    """Roll for a penalty against any on-ice skater. Returns (is_attacker_penalty, skater_id)."""
+    if rng.random() >= PENALTY_PER_TICK_PROB:
+        return (False, None)
+    # Penalize someone on the more physical line; player picked weighted by physical.
+    pool = attackers + defenders
+    weights = [s.physical for s in pool]
+    offender = _pick_weighted(rng, pool, weights)
+    is_attacker = offender in attackers
+    box = attacker_box if is_attacker else defender_box
+    box.add(offender.id)
+    return (is_attacker, offender.id)
 
 
-def _attempt(rng: random.Random, attackers: list, defenders_def: float, goalie):
+def _attempt_shot(
+    rng: random.Random,
+    attackers: list,
+    defender_def: float,
+    defender_goalie,
+    goalie_form: float,
+    strength: Strength,
+) -> tuple[EventKind | None, int | None, list[int], int]:
     """Returns (kind|None, shooter_id, assists, goalie_id)."""
     off = sum(0.5 * s.shooting + 0.3 * s.passing + 0.2 * s.skating for s in attackers) / len(attackers)
-    if rng.random() > _shot_probability(off, defenders_def):
+    shot_prob = _shot_probability(off, defender_def)
+    if strength == Strength.PP:
+        shot_prob *= SHOT_PROB_PP
+    elif strength == Strength.SH:
+        shot_prob *= SHOT_PROB_SH
+    if rng.random() > shot_prob:
         return (None, None, [], 0)
+
     shooter = _pick_weighted(rng, attackers, [s.shooting for s in attackers])
-    if rng.random() < _save_probability(goalie_save_rating(goalie), shooter.shooting):
-        return (EventKind.SAVE, shooter.id, [], goalie.id)
+    save_prob = _save_probability(goalie_save_rating(defender_goalie) + goalie_form, shooter.shooting)
+    if strength == Strength.PP:
+        save_prob *= SAVE_PROB_VS_PP
+    if rng.random() < save_prob:
+        return (EventKind.SAVE, shooter.id, [], defender_goalie.id)
+
     others = [a for a in attackers if a.id != shooter.id]
     assist_count = rng.choices([0, 1, 2], weights=[15, 50, 35])[0]
     assists: list[int] = []
@@ -67,30 +166,71 @@ def _attempt(rng: random.Random, attackers: list, defenders_def: float, goalie):
         pool.pop(idx)
         weights.pop(idx)
         assists.append(a.id)
-    return (EventKind.GOAL, shooter.id, assists, goalie.id)
+    return (EventKind.GOAL, shooter.id, assists, defender_goalie.id)
 
 
 def _run_tick(
     rng: random.Random,
-    attacker_team: SimTeamLineup,
-    defender_team: SimTeamLineup,
-    tick: int,
+    attacker: SimTeamLineup,
+    defender: SimTeamLineup,
     attacker_is_home: bool,
+    attacker_box: _PenaltyClock,
+    defender_box: _PenaltyClock,
+    goalie_forms: dict[int, float],
+    tick: int,
     events: list[SimEvent],
 ) -> int:
-    fwd, _ = _on_ice(attacker_team, tick)
-    _, dpair = _on_ice(defender_team, tick)
-    attackers = list(fwd.skaters)
-    kind, shooter_id, assists, goalie_id = _attempt(
-        rng, attackers, pair_defense(dpair), defender_team.starting_goalie
+    """Run a single attacking tick. Returns goals scored by attacker (0 or 1)."""
+    period = period_at_tick(tick)
+
+    # Penalty roll first; a penalty consumes the tick (no shot) for simplicity.
+    on_ice_fwd, on_ice_def = _on_ice(attacker, tick)
+    def_fwd, def_pair = _on_ice(defender, tick)
+    is_attacker_pen, offender_id = _maybe_penalty(
+        rng,
+        list(on_ice_fwd.skaters),
+        list(def_pair.skaters),
+        attacker_box,
+        defender_box,
+    )
+    if offender_id is not None:
+        # Penalty event is recorded against the offender's team.
+        team_is_home = attacker_is_home if is_attacker_pen else (not attacker_is_home)
+        events.append(
+            SimEvent(
+                tick=tick,
+                period=period,
+                kind=EventKind.PENALTY,
+                team_is_home=team_is_home,
+                strength=None,
+                primary_skater_id=offender_id,
+                assist1_id=None,
+                assist2_id=None,
+                goalie_id=None,
+                penalty_duration_ticks=PENALTY_DURATION_TICKS,
+            )
+        )
+        return 0
+
+    strength = _strength_for(attacker_box, defender_box)
+    kind, shooter_id, assists, goalie_id = _attempt_shot(
+        rng,
+        list(on_ice_fwd.skaters),
+        pair_defense(def_pair),
+        defender.starting_goalie,
+        goalie_forms[defender.starting_goalie.id],
+        strength,
     )
     if kind is None:
         return 0
+
     events.append(
         SimEvent(
             tick=tick,
+            period=period,
             kind=kind,
             team_is_home=attacker_is_home,
+            strength=strength,
             primary_skater_id=shooter_id,
             assist1_id=assists[0] if len(assists) >= 1 else None,
             assist2_id=assists[1] if len(assists) >= 2 else None,
@@ -104,6 +244,9 @@ def _simulate_phase(
     rng: random.Random,
     home: SimTeamLineup,
     away: SimTeamLineup,
+    home_box: _PenaltyClock,
+    away_box: _PenaltyClock,
+    goalie_forms: dict[int, float],
     start_tick: int,
     end_tick: int,
     events: list[SimEvent],
@@ -111,55 +254,38 @@ def _simulate_phase(
     stop_on_goal: bool,
 ) -> None:
     for t in range(start_tick, end_tick):
+        # Possession weighted by on-ice forward skating; PP team gets a possession edge.
         h_fwd, _ = _on_ice(home, t)
         a_fwd, _ = _on_ice(away, t)
-        h_skating = sum(s.skating for s in h_fwd.skaters)
-        a_skating = sum(s.skating for s in a_fwd.skaters)
-        home_attacks = rng.random() < h_skating / (h_skating + a_skating)
+        h_weight = sum(s.skating for s in h_fwd.skaters)
+        a_weight = sum(s.skating for s in a_fwd.skaters)
+        if home_box.shorthanded() and not away_box.shorthanded():
+            a_weight *= 1.5
+        elif away_box.shorthanded() and not home_box.shorthanded():
+            h_weight *= 1.5
+        home_attacks = rng.random() < h_weight / (h_weight + a_weight)
+
         if home_attacks:
-            score[0] += _run_tick(rng, home, away, t, True, events)
+            scored = _run_tick(rng, home, away, True, home_box, away_box, goalie_forms, t, events)
+            score[0] += scored
+            if scored and away_box.shorthanded():
+                away_box.release_oldest()
         else:
-            score[1] += _run_tick(rng, away, home, t, False, events)
+            scored = _run_tick(rng, away, home, False, away_box, home_box, goalie_forms, t, events)
+            score[1] += scored
+            if scored and home_box.shorthanded():
+                home_box.release_oldest()
+
+        home_box.tick_down()
+        away_box.tick_down()
+
         if stop_on_goal and score[0] != score[1]:
             return
 
 
-def simulate_game(input: SimGameInput) -> SimGameResult:
-    rng = random.Random(input.seed)
-    events: list[SimEvent] = []
-    score = [0, 0]
-
-    _simulate_phase(rng, input.home, input.away, 0, REGULATION_TICKS, events, score, stop_on_goal=False)
-    result_type = ResultType.REG
-
-    if score[0] == score[1]:
-        _simulate_phase(
-            rng,
-            input.home,
-            input.away,
-            REGULATION_TICKS,
-            REGULATION_TICKS + OT_MAX_TICKS,
-            events,
-            score,
-            stop_on_goal=True,
-        )
-        if score[0] != score[1]:
-            result_type = ResultType.OT
-        else:
-            home_strength = sum(line_offense(l) for l in input.home.forward_lines) - goalie_save_rating(
-                input.away.starting_goalie
-            )
-            away_strength = sum(line_offense(l) for l in input.away.forward_lines) - goalie_save_rating(
-                input.home.starting_goalie
-            )
-            offset = home_strength - away_strength
-            home_wins = rng.random() < 0.5 + offset / 1000.0
-            if home_wins:
-                score[0] += 1
-            else:
-                score[1] += 1
-            result_type = ResultType.SO
-
+def _aggregate_stats(
+    events: tuple[SimEvent, ...],
+) -> tuple[tuple[SimSkaterStat, ...], tuple[SimGoalieStat, ...], int, int]:
     skater_goals: dict[int, int] = defaultdict(int)
     skater_assists: dict[int, int] = defaultdict(int)
     skater_shots: dict[int, int] = defaultdict(int)
@@ -210,6 +336,50 @@ def simulate_game(input: SimGameInput) -> SimGameResult:
         )
         for gid in sorted(goalie_ids)
     )
+    return skater_stats, goalie_stats, home_shots, away_shots
+
+
+def simulate_game(input: SimGameInput) -> SimGameResult:
+    rng = random.Random(input.seed)
+    events: list[SimEvent] = []
+    score = [0, 0]
+    home_box = _PenaltyClock(remaining=[], skater_ids=[])
+    away_box = _PenaltyClock(remaining=[], skater_ids=[])
+    goalie_forms = {
+        input.home.starting_goalie.id: goalie_form_offset(input.home.starting_goalie, input.seed),
+        input.away.starting_goalie.id: goalie_form_offset(input.away.starting_goalie, input.seed),
+    }
+
+    _simulate_phase(
+        rng, input.home, input.away, home_box, away_box, goalie_forms,
+        0, REGULATION_TICKS, events, score, stop_on_goal=False,
+    )
+    result_type = ResultType.REG
+
+    if score[0] == score[1]:
+        _simulate_phase(
+            rng, input.home, input.away, home_box, away_box, goalie_forms,
+            REGULATION_TICKS, REGULATION_TICKS + OT_MAX_TICKS, events, score, stop_on_goal=True,
+        )
+        if score[0] != score[1]:
+            result_type = ResultType.OT
+        else:
+            home_strength = sum(line_offense(l) for l in input.home.forward_lines) - goalie_save_rating(
+                input.away.starting_goalie
+            )
+            away_strength = sum(line_offense(l) for l in input.away.forward_lines) - goalie_save_rating(
+                input.home.starting_goalie
+            )
+            offset = home_strength - away_strength
+            home_wins = rng.random() < 0.5 + offset / 1000.0
+            if home_wins:
+                score[0] += 1
+            else:
+                score[1] += 1
+            result_type = ResultType.SO
+
+    events_t = tuple(events)
+    skater_stats, goalie_stats, home_shots, away_shots = _aggregate_stats(events_t)
 
     return SimGameResult(
         home_score=score[0],
@@ -217,7 +387,7 @@ def simulate_game(input: SimGameInput) -> SimGameResult:
         home_shots=home_shots,
         away_shots=away_shots,
         result_type=result_type,
-        events=tuple(events),
+        events=events_t,
         skater_stats=skater_stats,
         goalie_stats=goalie_stats,
     )

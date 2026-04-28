@@ -1,5 +1,5 @@
 from sim.engine import simulate_game
-from sim.models import EventKind, ResultType, SimGameInput
+from sim.models import EventKind, ResultType, SimGameInput, Strength
 
 from tests.sim.test_engine_determinism import _team
 
@@ -30,3 +30,18 @@ def test_skater_stat_aggregation():
     goal_events = [e for e in r.events if e.kind == EventKind.GOAL]
     total_goals = sum(s.goals for s in r.skater_stats)
     assert total_goals == len(goal_events)
+
+
+def test_every_event_has_period():
+    r = simulate_game(SimGameInput(home=_team(1000), away=_team(2000), seed=5))
+    assert all(1 <= e.period <= 4 for e in r.events)
+
+
+def test_shot_and_save_events_have_strength():
+    r = simulate_game(SimGameInput(home=_team(1000), away=_team(2000), seed=9))
+    for e in r.events:
+        if e.kind in (EventKind.SAVE, EventKind.GOAL):
+            assert e.strength in set(Strength)
+        if e.kind == EventKind.PENALTY:
+            assert e.strength is None
+            assert e.penalty_duration_ticks and e.penalty_duration_ticks > 0
