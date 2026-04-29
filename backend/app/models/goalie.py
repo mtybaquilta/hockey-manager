@@ -16,3 +16,5 @@ class Goalie(Base):
     rebound_control: Mapped[int] = mapped_column(Integer, nullable=False)
     puck_handling: Mapped[int] = mapped_column(Integer, nullable=False)
     mental: Mapped[int] = mapped_column(Integer, nullable=False)
+    potential: Mapped[int] = mapped_column(Integer, nullable=False)
+    development_type: Mapped[str] = mapped_column(String(16), nullable=False)

@@ -17,3 +17,5 @@ class Skater(Base):
     passing: Mapped[int] = mapped_column(Integer, nullable=False)
     defense: Mapped[int] = mapped_column(Integer, nullable=False)
     physical: Mapped[int] = mapped_column(Integer, nullable=False)
+    potential: Mapped[int] = mapped_column(Integer, nullable=False)
+    development_type: Mapped[str] = mapped_column(String(16), nullable=False)
