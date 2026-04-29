@@ -32,7 +32,13 @@ def post_advance(db: Session = Depends(get_db)):
 
 @router.get("/status", response_model=SeasonStatusOut)
 def get_status(db: Session = Depends(get_db)):
-    s = get_league(db)
+    from app.models import Season
+
+    s = db.query(Season).order_by(Season.id.desc()).first()
+    if not s:
+        from app.errors import LeagueNotFound
+
+        raise LeagueNotFound("no active league")
     return SeasonStatusOut(current_matchday=s.current_matchday, status=s.status)
 
 

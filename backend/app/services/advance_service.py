@@ -116,7 +116,7 @@ def _apply_standing(
 
 
 def advance_matchday(db: Session) -> dict:
-    season = db.query(Season).first()
+    season = db.query(Season).order_by(Season.id.desc()).first()
     if not season:
         raise LeagueNotFound("no active league")
     if season.status == "complete":

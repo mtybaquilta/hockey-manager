@@ -54,11 +54,17 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
     return season
 
 
-def get_league(db: Session) -> Season:
-    season = db.query(Season).first()
+def get_active_season(db: Session) -> Season:
+    season = (
+        db.query(Season).filter_by(status="active").order_by(Season.id.desc()).first()
+    )
     if not season:
         raise LeagueNotFound("no active league")
     return season
+
+
+# Backwards-compatible alias used by existing call sites.
+get_league = get_active_season
 
 
 def set_user_team(db: Session, team_id: int) -> Season:
