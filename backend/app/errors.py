@@ -51,6 +51,16 @@ class SeasonAlreadyComplete(DomainError):
     status = 409
 
 
+class NoActiveSeason(DomainError):
+    code = "NoActiveSeason"
+    status = 404
+
+
+class SeasonNotComplete(DomainError):
+    code = "SeasonNotComplete"
+    status = 409
+
+
 def install_handlers(app: FastAPI) -> None:
     async def handle(_request: Request, exc: DomainError):
         return JSONResponse(
