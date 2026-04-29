@@ -17,7 +17,7 @@ def test_schedule_total_games_and_matchdays(db):
     s = Season(seed=1)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db, s.id)
+    teams = generate_teams(random.Random(s.seed), db)
     generate_schedule(random.Random(s.seed), db, s.id, [t.id for t in teams])
     games = db.query(Game).filter_by(season_id=s.id).all()
 
@@ -32,7 +32,7 @@ def test_each_matchday_has_disjoint_teams(db):
     s = Season(seed=1)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db, s.id)
+    teams = generate_teams(random.Random(s.seed), db)
     generate_schedule(random.Random(s.seed), db, s.id, [t.id for t in teams])
     games = db.query(Game).filter_by(season_id=s.id).all()
     by_md: dict[int, list[Game]] = {}
@@ -47,7 +47,7 @@ def test_each_pair_plays_games_per_pairing_times(db):
     s = Season(seed=1)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db, s.id)
+    teams = generate_teams(random.Random(s.seed), db)
     generate_schedule(random.Random(s.seed), db, s.id, [t.id for t in teams])
     games = db.query(Game).filter_by(season_id=s.id).all()
     counts: dict = {}

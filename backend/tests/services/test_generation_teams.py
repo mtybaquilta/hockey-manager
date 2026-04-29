@@ -8,7 +8,7 @@ def test_generates_4_teams_with_full_rosters(db):
     s = Season(seed=1)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db, s.id)
+    teams = generate_teams(random.Random(s.seed), db)
     assert len(teams) == TEAM_COUNT
     for t in teams:
         skaters = db.query(Skater).filter_by(team_id=t.id).all()

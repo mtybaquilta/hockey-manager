@@ -9,7 +9,7 @@ def test_default_lineup_filled_for_each_team(db):
     s = Season(seed=1)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db, s.id)
+    teams = generate_teams(random.Random(s.seed), db)
     generate_default_lineups(db, [t.id for t in teams])
     for t in teams:
         lu = db.query(Lineup).filter_by(team_id=t.id).one()
