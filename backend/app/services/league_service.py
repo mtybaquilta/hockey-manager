@@ -44,7 +44,7 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
     db.add(season)
     db.flush()
     rng = random.Random(seed_val)
-    teams = generate_teams(rng, db, season.id)
+    teams = generate_teams(rng, db)
     generate_default_lineups(db, [t.id for t in teams])
     generate_schedule(rng, db, season.id, [t.id for t in teams])
     for t in teams:
@@ -63,7 +63,7 @@ def get_league(db: Session) -> Season:
 
 def set_user_team(db: Session, team_id: int) -> Season:
     season = get_league(db)
-    team = db.query(Team).filter_by(id=team_id, season_id=season.id).first()
+    team = db.query(Team).filter_by(id=team_id).first()
     if not team:
         raise TeamNotFound(f"team {team_id} not in current league")
     season.user_team_id = team.id

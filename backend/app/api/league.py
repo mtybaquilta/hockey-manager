@@ -10,7 +10,7 @@ router = APIRouter(prefix="/league", tags=["league"])
 
 
 def _serialize(db: Session, season: Season) -> LeagueOut:
-    teams = db.query(Team).filter_by(season_id=season.id).order_by(Team.id).all()
+    teams = db.query(Team).order_by(Team.id).all()
     return LeagueOut(
         season_id=season.id,
         seed=season.seed,

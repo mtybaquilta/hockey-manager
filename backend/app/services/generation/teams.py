@@ -9,12 +9,12 @@ from app.services.generation.players import generate_players_for_team
 TEAM_COUNT = 30
 
 
-def generate_teams(rng: random.Random, db: Session, season_id: int) -> list[Team]:
+def generate_teams(rng: random.Random, db: Session) -> list[Team]:
     used_names: set[str] = set()
     name_specs = sample_team_names(rng, TEAM_COUNT)
     teams: list[Team] = []
     for spec in name_specs:
-        t = Team(season_id=season_id, name=spec["name"], abbreviation=spec["abbreviation"])
+        t = Team(name=spec["name"], abbreviation=spec["abbreviation"])
         db.add(t)
         db.flush()
         generate_players_for_team(rng, db, t.id, used_names)
