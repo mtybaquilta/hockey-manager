@@ -46,12 +46,16 @@ Two new layers, mirroring the existing `sim/engine.py` ↔ `services/advance_ser
 - `skater.development_type` varchar(16), NOT NULL. Allowed: `steady`, `early_bloomer`, `late_bloomer`, `boom_or_bust`.
 - `goalie.potential` int (0–100), NOT NULL.
 - `goalie.development_type` varchar(16), NOT NULL.
-- `game.season_id` FK → `season.id`, NOT NULL.
-- `standing.season_id` FK → `season.id`, NOT NULL. Unique `(season_id, team_id)`.
 
-Backfill in migration:
-- For existing players: `potential = clamp(overall + small_random(0..6), 0, 100)`, `development_type = 'steady'`.
-- For existing games and standings: set `season_id` to the current active season's id.
+(`game.season_id` and `standing.season_id` already exist in the current schema, including the `(season_id, team_id)` unique on `standing` — no migration needed.)
+
+### Team / season decoupling
+
+`team.season_id` currently exists with `ON DELETE CASCADE`, which would erase teams whenever an old season is deleted and conceptually ties a team to a single season. To support multi-season, drop `team.season_id` entirely. Update `league_service.set_user_team` to look up teams by `id` only.
+
+### Backfill in migration
+
+- For existing players: `potential = clamp(overall + random(0..6), 0, 100)`, `development_type = 'steady'`.
 
 ### New tables
 
@@ -169,7 +173,7 @@ If league average denominator is zero (no games), `s = 0` for everyone.
 
 `POST /api/season/start-next` → `season_rollover_service.start_next_season(db)`:
 
-1. Load current active `Season`. If none → 404 `NoActiveSeason`. If `status != 'completed'` → 409 `SeasonNotComplete`. If any `game.status != 'completed'` for that season → 409 `SeasonNotComplete`.
+1. Load the active `Season` (`status='active'`). If none → 404 `NoActiveSeason`. If `status != 'complete'` → 409 `SeasonNotComplete` (note: existing code uses status value `'complete'`, not `'completed'`). If any `game.status != 'simulated'` exists for that season (i.e., a `'scheduled'` game remains) → 409 `SeasonNotComplete`.
 2. Compute league averages from completed season's `skater_game_stat` / `goalie_game_stat`, filtered by `game.season_id = current.id`.
 3. Compute per-player perf signals for every skater and goalie (DNP → `s=0`).
 4. Derive `new_seed = (current.seed * 31 + current.id) & 0x7FFFFFFF`.
@@ -261,11 +265,11 @@ Service / integration tests (`backend/tests/test_season_rollover.py`):
 Single Alembic migration:
 
 1. Add `potential`, `development_type` columns to `skater` and `goalie` (nullable initially).
-2. Backfill: `potential = clamp(overall + random(0..6), 0, 100)`, `development_type = 'steady'`. Then set NOT NULL.
-3. Add `season_id` to `game` and `standing` (nullable initially).
-4. Backfill: set to current active season's id.
-5. Set NOT NULL, add FKs and `(season_id, team_id)` unique on `standing`.
-6. Create `season_progression` and `development_event` tables.
+2. Backfill: `potential = clamp(overall + random(0..6), 0, 100)` (overall computed from current attribute columns), `development_type = 'steady'`. Then set NOT NULL.
+3. Drop `team.season_id` (and its FK / index).
+4. Create `season_progression` and `development_event` tables.
+
+`game.season_id` and `standing.season_id` already exist; do not touch them.
 
 ## Out of Scope (Deferred)
 
