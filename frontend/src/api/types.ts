@@ -92,4 +92,56 @@ export interface SeasonStats {
   top_goalie_save_pct: number;
   top_goalie_shots_against: number;
 }
+export interface SkaterStatRow {
+  skater_id: number; name: string; team_id: number; position: Position;
+  games_played: number; goals: number; assists: number; points: number;
+  shots: number; shooting_pct: number;
+}
+export interface SkatersStats { rows: SkaterStatRow[]; }
+
+export interface GoalieStatRow {
+  goalie_id: number; name: string; team_id: number;
+  games_played: number; shots_against: number; saves: number; goals_against: number;
+  save_pct: number; gaa: number;
+}
+export interface GoaliesStats { rows: GoalieStatRow[]; }
+
+export interface TeamStatRow {
+  team_id: number;
+  games_played: number; wins: number; losses: number; ot_losses: number; points: number;
+  goals_for: number; goals_against: number; diff: number;
+  goals_per_game: number; shots_per_game: number;
+  save_pct: number; shooting_pct: number;
+  pp_pct: number; pk_pct: number;
+}
+export interface TeamsStats { rows: TeamStatRow[]; }
+
+export interface SkaterTotals {
+  games_played: number; goals: number; assists: number; points: number; shots: number; shooting_pct: number;
+}
+export interface SkaterGameLogRow {
+  game_id: number; matchday: number; opponent_team_id: number; is_home: boolean;
+  goals: number; assists: number; points: number; shots: number;
+}
+export interface SkaterDetail {
+  id: number; name: string; age: number; position: Position; team_id: number;
+  attributes: { skating: number; shooting: number; passing: number; defense: number; physical: number };
+  totals: SkaterTotals;
+  game_log: SkaterGameLogRow[];
+}
+
+export interface GoalieTotals {
+  games_played: number; shots_against: number; saves: number; goals_against: number; save_pct: number; gaa: number;
+}
+export interface GoalieGameLogRow {
+  game_id: number; matchday: number; opponent_team_id: number; is_home: boolean;
+  shots_against: number; saves: number; goals_against: number; save_pct: number;
+}
+export interface GoalieDetail {
+  id: number; name: string; age: number; team_id: number;
+  attributes: { reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number };
+  totals: GoalieTotals;
+  game_log: GoalieGameLogRow[];
+}
+
 export interface ApiError { error_code: string; message: string; }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import games, health, league, lineup, schedule, season, standings, teams
+from app.api import games, health, league, lineup, players, schedule, season, standings, stats, teams
 
 api_router = APIRouter(prefix="/api")
 for r in (
@@ -12,5 +12,7 @@ for r in (
     standings.router,
     games.router,
     season.router,
+    stats.router,
+    players.router,
 ):
     api_router.include_router(r)

@@ -1,16 +1,34 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Logo } from "../components/Logo";
+import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { useGame } from "../queries/games";
 import { useTeams } from "../queries/teams";
+import { HmApiError } from "../api/client";
 import type { GameDetail } from "../api/types";
 
 const Box = () => {
   const { gameId } = Route.useParams();
   const g = useGame(Number(gameId));
   const teams = useTeams();
+  if (g.error instanceof HmApiError && g.error.code === "GameNotFound") {
+    return (
+      <Shell crumbs={["Continental Hockey League", "Schedule", "Not found"]}>
+        <Card title="Game not found">
+          <div style={{ padding: "16px 18px", color: "var(--ink-3)" }}>
+            Game #{gameId} doesn't exist in the current league. It may belong to a previous season.
+            <div style={{ marginTop: 12 }}>
+              <Link to="/schedule" className="btn btn-primary">
+                Back to schedule
+              </Link>
+            </div>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
   if (!g.data || !teams.data) return <Shell crumbs={["Continental Hockey League", "Game"]}>Loading…</Shell>;
   const d = g.data;
   const home = teams.data.find((t) => t.id === d.home_team_id);
@@ -21,6 +39,9 @@ const Box = () => {
   const awayGoalsByPeriod = d.away_goals_by_period;
   const hasOT = d.result_type === "OT" || d.result_type === "SO";
   const periodLabels = hasOT ? ["P1", "P2", "P3", "OT"] : ["P1", "P2", "P3"];
+  const skaterPager = usePager(d.skater_stats);
+  const goaliePager = usePager(d.goalie_stats);
+  const eventPager = usePager(d.events);
 
   return (
     <Shell crumbs={["Continental Hockey League", "Schedule", `${away.abbreviation} vs ${home.abbreviation}`]}>
@@ -172,10 +193,12 @@ const Box = () => {
               </tr>
             </thead>
             <tbody>
-              {d.skater_stats.map((s) => (
+              {skaterPager.slice.map((s) => (
                 <tr key={s.skater_id}>
                   <Td>
-                    <b>{s.skater_name}</b>
+                    <Link to="/player/skater/$id" params={{ id: String(s.skater_id) }} style={{ fontWeight: 700, color: "var(--ink)" }}>
+                      {s.skater_name}
+                    </Link>
                   </Td>
                   <Td className="num">{s.goals}</Td>
                   <Td className="num">{s.assists}</Td>
@@ -187,6 +210,7 @@ const Box = () => {
               ))}
             </tbody>
           </Table>
+          <Pagination {...skaterPager} onPage={skaterPager.setPage} />
         </Card>
         <Card title="Goaltending">
           <Table>
@@ -200,10 +224,12 @@ const Box = () => {
               </tr>
             </thead>
             <tbody>
-              {d.goalie_stats.map((s) => (
+              {goaliePager.slice.map((s) => (
                 <tr key={s.goalie_id}>
                   <Td>
-                    <b>{s.goalie_name}</b>
+                    <Link to="/player/goalie/$id" params={{ id: String(s.goalie_id) }} style={{ fontWeight: 700, color: "var(--ink)" }}>
+                      {s.goalie_name}
+                    </Link>
                   </Td>
                   <Td className="num">{s.shots_against}</Td>
                   <Td className="num">{s.saves}</Td>
@@ -217,15 +243,24 @@ const Box = () => {
               ))}
             </tbody>
           </Table>
+          <Pagination {...goaliePager} onPage={goaliePager.setPage} />
         </Card>
       </div>
 
       <Card title="Play-by-Play" sub={`${d.events.length} events`}>
         <div style={{ maxHeight: 480, overflow: "auto" }}>
-          {d.events.map((e, i) => (
-            <PlayRow key={i} e={e} home={home} away={away} idx={i} last={i === d.events.length - 1} />
+          {eventPager.slice.map((e, i) => (
+            <PlayRow
+              key={eventPager.page * eventPager.pageSize + i}
+              e={e}
+              home={home}
+              away={away}
+              idx={i}
+              last={i === eventPager.slice.length - 1}
+            />
           ))}
         </div>
+        <Pagination {...eventPager} onPage={eventPager.setPage} />
       </Card>
     </Shell>
   );

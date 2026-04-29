@@ -1,4 +1,6 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
+// Skater/goalie names link to the player detail page.
+import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
@@ -20,13 +22,18 @@ const TeamPage = () => {
   const F = roster.data.skaters.filter((s) => s.position !== "LD" && s.position !== "RD");
   const D = roster.data.skaters.filter((s) => s.position === "LD" || s.position === "RD");
   const G = roster.data.goalies;
+  const fPager = usePager(F);
+  const dPager = usePager(D);
+  const gPager = usePager(G);
 
   const SkaterRow = ({ p }: { p: (typeof F)[number] }) => {
     const ovr = Math.round(0.25 * p.shooting + 0.2 * p.passing + 0.2 * p.skating + 0.2 * p.defense + 0.15 * p.physical);
     return (
       <tr>
         <Td>
-          <b>{p.name}</b>
+          <Link to="/player/skater/$id" params={{ id: String(p.id) }} style={{ fontWeight: 700, color: "var(--ink)" }}>
+            {p.name}
+          </Link>
         </Td>
         <Td style={{ color: "var(--ink-3)" }}>{p.position}</Td>
         <Td className="num">{p.age}</Td>
@@ -92,8 +99,9 @@ const TeamPage = () => {
               <Th className="num">PH</Th>
             </tr>
           </thead>
-          <tbody>{F.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
+          <tbody>{fPager.slice.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
         </Table>
+        <Pagination {...fPager} onPage={fPager.setPage} />
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
@@ -115,8 +123,9 @@ const TeamPage = () => {
               <Th className="num">PH</Th>
             </tr>
           </thead>
-          <tbody>{D.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
+          <tbody>{dPager.slice.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
         </Table>
+        <Pagination {...dPager} onPage={dPager.setPage} />
       </div>
 
       <div className="card" style={{ marginTop: 14 }}>
@@ -138,12 +147,14 @@ const TeamPage = () => {
             </tr>
           </thead>
           <tbody>
-            {G.map((g) => {
+            {gPager.slice.map((g) => {
               const ovr = goalieOvr(g);
               return (
                 <tr key={g.id}>
                   <Td>
-                    <b>{g.name}</b>
+                    <Link to="/player/goalie/$id" params={{ id: String(g.id) }} style={{ fontWeight: 700, color: "var(--ink)" }}>
+                      {g.name}
+                    </Link>
                   </Td>
                   <Td className="num">{g.age}</Td>
                   <Td className="num">
@@ -169,6 +180,7 @@ const TeamPage = () => {
             })}
           </tbody>
         </Table>
+        <Pagination {...gPager} onPage={gPager.setPage} />
       </div>
     </Shell>
   );

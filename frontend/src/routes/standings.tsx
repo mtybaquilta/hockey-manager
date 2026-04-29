@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Logo } from "../components/Logo";
+import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { useLeague } from "../queries/league";
@@ -16,6 +17,7 @@ const StandingsPage = () => {
   }
   const userId = l.data.user_team_id;
   const playoffCut = Math.min(4, s.data.rows.length - 1);
+  const pager = usePager(s.data.rows);
 
   return (
     <Shell crumbs={["Continental Hockey League", "Standings"]}>
@@ -45,14 +47,14 @@ const StandingsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {s.data.rows.map((r, i) => {
+            {pager.slice.map((r, i) => {
               const t = teams.data!.find((x) => x.id === r.team_id);
               if (!t) return null;
               const diff = r.goals_for - r.goals_against;
               const pct = r.games_played ? (r.points / (r.games_played * 2)).toFixed(3).slice(1) : "—";
               return (
                 <tr key={r.team_id} className={r.team_id === userId ? "me" : ""}>
-                  <Td className="rank">{i + 1}</Td>
+                  <Td className="rank">{pager.page * pager.pageSize + i + 1}</Td>
                   <Td>
                     <span className="team-row">
                       <Logo teamId={t.id} size={22} />
@@ -79,6 +81,7 @@ const StandingsPage = () => {
             })}
           </tbody>
         </Table>
+        <Pagination {...pager} onPage={pager.setPage} />
       </Card>
     </Shell>
   );

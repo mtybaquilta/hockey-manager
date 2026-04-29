@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StandingsRouteImport } from './routes/standings'
 import { Route as SeasonCompleteRouteImport } from './routes/season-complete'
 import { Route as ScheduleRouteImport } from './routes/schedule'
@@ -16,7 +17,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeamTeamIdRouteImport } from './routes/team.$teamId'
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId'
 import { Route as TeamTeamIdLineupRouteImport } from './routes/team.$teamId.lineup'
+import { Route as PlayerSkaterIdRouteImport } from './routes/player.skater.$id'
+import { Route as PlayerGoalieIdRouteImport } from './routes/player.goalie.$id'
 
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StandingsRoute = StandingsRouteImport.update({
   id: '/standings',
   path: '/standings',
@@ -52,14 +60,27 @@ const TeamTeamIdLineupRoute = TeamTeamIdLineupRouteImport.update({
   path: '/lineup',
   getParentRoute: () => TeamTeamIdRoute,
 } as any)
+const PlayerSkaterIdRoute = PlayerSkaterIdRouteImport.update({
+  id: '/player/skater/$id',
+  path: '/player/skater/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayerGoalieIdRoute = PlayerGoalieIdRouteImport.update({
+  id: '/player/goalie/$id',
+  path: '/player/goalie/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
+  '/stats': typeof StatsRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/player/goalie/$id': typeof PlayerGoalieIdRoute
+  '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
 }
 export interface FileRoutesByTo {
@@ -67,8 +88,11 @@ export interface FileRoutesByTo {
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
+  '/stats': typeof StatsRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/player/goalie/$id': typeof PlayerGoalieIdRoute
+  '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
 }
 export interface FileRoutesById {
@@ -77,8 +101,11 @@ export interface FileRoutesById {
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
+  '/stats': typeof StatsRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/player/goalie/$id': typeof PlayerGoalieIdRoute
+  '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
 }
 export interface FileRouteTypes {
@@ -88,8 +115,11 @@ export interface FileRouteTypes {
     | '/schedule'
     | '/season-complete'
     | '/standings'
+    | '/stats'
     | '/game/$gameId'
     | '/team/$teamId'
+    | '/player/goalie/$id'
+    | '/player/skater/$id'
     | '/team/$teamId/lineup'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,8 +127,11 @@ export interface FileRouteTypes {
     | '/schedule'
     | '/season-complete'
     | '/standings'
+    | '/stats'
     | '/game/$gameId'
     | '/team/$teamId'
+    | '/player/goalie/$id'
+    | '/player/skater/$id'
     | '/team/$teamId/lineup'
   id:
     | '__root__'
@@ -106,8 +139,11 @@ export interface FileRouteTypes {
     | '/schedule'
     | '/season-complete'
     | '/standings'
+    | '/stats'
     | '/game/$gameId'
     | '/team/$teamId'
+    | '/player/goalie/$id'
+    | '/player/skater/$id'
     | '/team/$teamId/lineup'
   fileRoutesById: FileRoutesById
 }
@@ -116,12 +152,22 @@ export interface RootRouteChildren {
   ScheduleRoute: typeof ScheduleRoute
   SeasonCompleteRoute: typeof SeasonCompleteRoute
   StandingsRoute: typeof StandingsRoute
+  StatsRoute: typeof StatsRoute
   GameGameIdRoute: typeof GameGameIdRoute
   TeamTeamIdRoute: typeof TeamTeamIdRouteWithChildren
+  PlayerGoalieIdRoute: typeof PlayerGoalieIdRoute
+  PlayerSkaterIdRoute: typeof PlayerSkaterIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/standings': {
       id: '/standings'
       path: '/standings'
@@ -171,6 +217,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamTeamIdLineupRouteImport
       parentRoute: typeof TeamTeamIdRoute
     }
+    '/player/skater/$id': {
+      id: '/player/skater/$id'
+      path: '/player/skater/$id'
+      fullPath: '/player/skater/$id'
+      preLoaderRoute: typeof PlayerSkaterIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/player/goalie/$id': {
+      id: '/player/goalie/$id'
+      path: '/player/goalie/$id'
+      fullPath: '/player/goalie/$id'
+      preLoaderRoute: typeof PlayerGoalieIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -191,8 +251,11 @@ const rootRouteChildren: RootRouteChildren = {
   ScheduleRoute: ScheduleRoute,
   SeasonCompleteRoute: SeasonCompleteRoute,
   StandingsRoute: StandingsRoute,
+  StatsRoute: StatsRoute,
   GameGameIdRoute: GameGameIdRoute,
   TeamTeamIdRoute: TeamTeamIdRouteWithChildren,
+  PlayerGoalieIdRoute: PlayerGoalieIdRoute,
+  PlayerSkaterIdRoute: PlayerSkaterIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

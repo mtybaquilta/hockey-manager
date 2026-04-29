@@ -26,6 +26,16 @@ class GameNotFound(DomainError):
     status = 404
 
 
+class SkaterNotFound(DomainError):
+    code = "SkaterNotFound"
+    status = 404
+
+
+class GoalieNotFound(DomainError):
+    code = "GoalieNotFound"
+    status = 404
+
+
 class LineupInvalid(DomainError):
     code = "LineupInvalid"
     status = 422

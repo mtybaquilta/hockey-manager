@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Logo } from "../components/Logo";
+import { Pagination, usePager } from "../components/Pagination";
 import { ResultBadge } from "../components/ResultBadge";
 import { Shell } from "../components/Shell";
 import { useLeague } from "../queries/league";
@@ -19,6 +20,10 @@ const SchedulePage = () => {
   const games = userId == null ? sched.data.games : sched.data.games.filter((g) => g.home_team_id === userId || g.away_team_id === userId);
   const past = games.filter((g) => g.status === "simulated");
   const upcoming = games.filter((g) => g.status === "scheduled");
+  // Past list is reversed (most recent first); pager works on the reversed array.
+  const pastReversed = past.slice().reverse();
+  const pastPager = usePager(pastReversed);
+  const upcomingPager = usePager(upcoming);
 
   const teamName = (id: number) => teams.data!.find((t) => t.id === id)?.name ?? "—";
   const teamAbbr = (id: number) => teams.data!.find((t) => t.id === id)?.abbreviation ?? "—";
@@ -186,9 +191,10 @@ const SchedulePage = () => {
             No games played yet.
           </div>
         )}
-        {past.slice().reverse().map((g) => (
+        {pastPager.slice.map((g) => (
           <PastRow key={g.id} g={g} />
         ))}
+        <Pagination {...pastPager} onPage={pastPager.setPage} />
 
         <div
           style={{
@@ -210,9 +216,10 @@ const SchedulePage = () => {
             No upcoming games.
           </div>
         )}
-        {upcoming.map((g) => (
+        {upcomingPager.slice.map((g) => (
           <UpcomingRow key={g.id} g={g} />
         ))}
+        <Pagination {...upcomingPager} onPage={upcomingPager.setPage} />
       </Card>
     </Shell>
   );
