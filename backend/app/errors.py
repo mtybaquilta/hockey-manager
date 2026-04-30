@@ -61,6 +61,16 @@ class SeasonNotComplete(DomainError):
     status = 409
 
 
+class GameplanInvalid(DomainError):
+    code = "GameplanInvalid"
+    status = 422
+
+
+class NotUserTeam(DomainError):
+    code = "NotUserTeam"
+    status = 403
+
+
 def install_handlers(app: FastAPI) -> None:
     async def handle(_request: Request, exc: DomainError):
         return JSONResponse(
