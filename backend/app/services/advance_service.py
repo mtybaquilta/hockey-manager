@@ -17,9 +17,11 @@ from sim.models import (
     Position,
     ResultType,
     SimGameInput,
+    SimGameplan,
     SimGoalie,
     SimLine,
     SimSkater,
+    SimTeamInput,
     SimTeamLineup,
 )
 from sim.seed import derive_game_seed
@@ -135,7 +137,14 @@ def advance_matchday(db: Session) -> dict:
         home_lu = _build_lineup(db, g.home_team_id)
         away_lu = _build_lineup(db, g.away_team_id)
         seed = derive_game_seed(season.seed, g.id)
-        result = simulate_game(SimGameInput(home=home_lu, away=away_lu, seed=seed))
+        default_gp = SimGameplan(style="balanced", line_usage="balanced")
+        result = simulate_game(
+            SimGameInput(
+                home=SimTeamInput(lineup=home_lu, gameplan=default_gp),
+                away=SimTeamInput(lineup=away_lu, gameplan=default_gp),
+                seed=seed,
+            )
+        )
 
         g.status = "simulated"
         g.home_score = result.home_score
