@@ -9,6 +9,7 @@ from app.models.skater import Skater
 from app.models.standing import Standing
 from app.models.stats import GoalieGameStat, SkaterGameStat
 from app.models.team import Team
+from app.models.team_gameplan import TeamGameplan
 
 __all__ = [
     "DevelopmentEvent",
@@ -23,4 +24,5 @@ __all__ = [
     "SkaterGameStat",
     "GoalieGameStat",
     "Team",
+    "TeamGameplan",
 ]
