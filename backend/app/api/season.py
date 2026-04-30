@@ -119,7 +119,12 @@ class SeasonStatsOut(BaseModel):
 
 @router.get("/stats", response_model=SeasonStatsOut)
 def get_stats(db: Session = Depends(get_db)):
-    games = db.query(Game).filter(Game.status == "simulated").all()
+    season = get_league(db)
+    games = (
+        db.query(Game)
+        .filter(Game.status == "simulated", Game.season_id == season.id)
+        .all()
+    )
     n = len(games)
     if n == 0:
         return SeasonStatsOut(
@@ -186,6 +191,7 @@ def get_stats(db: Session = Depends(get_db)):
             func.sum(SkaterGameStat.goals).label("g"),
             func.sum(SkaterGameStat.assists).label("a"),
         )
+        .filter(SkaterGameStat.game_id.in_(game_ids))
         .group_by(SkaterGameStat.skater_id)
         .all()
     )
@@ -204,6 +210,7 @@ def get_stats(db: Session = Depends(get_db)):
             func.sum(GoalieGameStat.shots_against).label("sa"),
             func.sum(GoalieGameStat.saves).label("sv"),
         )
+        .filter(GoalieGameStat.game_id.in_(game_ids))
         .group_by(GoalieGameStat.goalie_id)
         .all()
     )

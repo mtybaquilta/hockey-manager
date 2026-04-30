@@ -6,6 +6,7 @@ from app.db import get_db
 from sqlalchemy import func
 
 from app.errors import GoalieNotFound, SkaterNotFound
+from app.services.league_service import get_league
 from app.models import (
     DevelopmentEvent,
     Game,
@@ -113,10 +114,11 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
     sk = db.query(Skater).filter_by(id=skater_id).first()
     if not sk:
         raise SkaterNotFound(f"skater {skater_id} not found")
+    season = get_league(db)
     rows = (
         db.query(SkaterGameStat, Game)
         .join(Game, SkaterGameStat.game_id == Game.id)
-        .filter(SkaterGameStat.skater_id == skater_id)
+        .filter(SkaterGameStat.skater_id == skater_id, Game.season_id == season.id)
         .order_by(Game.matchday, Game.id)
         .all()
     )
@@ -174,10 +176,11 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
     gk = db.query(Goalie).filter_by(id=goalie_id).first()
     if not gk:
         raise GoalieNotFound(f"goalie {goalie_id} not found")
+    season = get_league(db)
     rows = (
         db.query(GoalieGameStat, Game)
         .join(Game, GoalieGameStat.game_id == Game.id)
-        .filter(GoalieGameStat.goalie_id == goalie_id)
+        .filter(GoalieGameStat.goalie_id == goalie_id, Game.season_id == season.id)
         .order_by(Game.matchday, Game.id)
         .all()
     )

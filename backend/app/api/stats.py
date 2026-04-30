@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Game, GameEvent, Goalie, GoalieGameStat, Skater, SkaterGameStat, Standing, Team
+from app.services.league_service import get_league
 
 
 class SkaterStatRow(BaseModel):
@@ -69,6 +70,7 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 
 @router.get("/skaters", response_model=SkatersOut)
 def get_skater_stats(db: Session = Depends(get_db)):
+    season = get_league(db)
     rows = (
         db.query(
             SkaterGameStat.skater_id,
@@ -77,6 +79,8 @@ def get_skater_stats(db: Session = Depends(get_db)):
             func.sum(SkaterGameStat.assists).label("a"),
             func.sum(SkaterGameStat.shots).label("s"),
         )
+        .join(Game, SkaterGameStat.game_id == Game.id)
+        .filter(Game.season_id == season.id)
         .group_by(SkaterGameStat.skater_id)
         .all()
     )
@@ -108,6 +112,7 @@ def get_skater_stats(db: Session = Depends(get_db)):
 
 @router.get("/goalies", response_model=GoaliesOut)
 def get_goalie_stats(db: Session = Depends(get_db)):
+    season = get_league(db)
     rows = (
         db.query(
             GoalieGameStat.goalie_id,
@@ -116,6 +121,8 @@ def get_goalie_stats(db: Session = Depends(get_db)):
             func.sum(GoalieGameStat.saves).label("sv"),
             func.sum(GoalieGameStat.goals_against).label("ga"),
         )
+        .join(Game, GoalieGameStat.game_id == Game.id)
+        .filter(Game.season_id == season.id)
         .group_by(GoalieGameStat.goalie_id)
         .all()
     )
@@ -147,9 +154,17 @@ def get_goalie_stats(db: Session = Depends(get_db)):
 
 @router.get("/teams", response_model=TeamsOut)
 def get_team_stats(db: Session = Depends(get_db)):
+    season = get_league(db)
     teams = db.query(Team).all()
-    standings = {s.team_id: s for s in db.query(Standing).all()}
-    games = db.query(Game).filter(Game.status == "simulated").all()
+    standings = {
+        s.team_id: s
+        for s in db.query(Standing).filter_by(season_id=season.id).all()
+    }
+    games = (
+        db.query(Game)
+        .filter(Game.status == "simulated", Game.season_id == season.id)
+        .all()
+    )
 
     shots_for = defaultdict(int)
     shots_against_total = defaultdict(int)
