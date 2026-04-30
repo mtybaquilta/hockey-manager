@@ -55,6 +55,8 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
 
 
 def get_active_season(db: Session) -> Season:
+    """Return the season currently being played (status='active'). Used by the
+    rollover service when it needs to refuse work on a completed season."""
     season = (
         db.query(Season).filter_by(status="active").order_by(Season.id.desc()).first()
     )
@@ -63,8 +65,14 @@ def get_active_season(db: Session) -> Season:
     return season
 
 
-# Backwards-compatible alias used by existing call sites.
-get_league = get_active_season
+def get_league(db: Session) -> Season:
+    """Return the most recent season regardless of status. Used by the league
+    API and UI; a completed season is still 'the league' until the user starts
+    the next one."""
+    season = db.query(Season).order_by(Season.id.desc()).first()
+    if not season:
+        raise LeagueNotFound("no active league")
+    return season
 
 
 def set_user_team(db: Session, team_id: int) -> Season:
