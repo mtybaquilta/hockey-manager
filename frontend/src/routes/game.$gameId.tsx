@@ -13,6 +13,9 @@ const Box = () => {
   const { gameId } = Route.useParams();
   const g = useGame(Number(gameId));
   const teams = useTeams();
+  const skaterPager = usePager(g.data?.skater_stats ?? []);
+  const goaliePager = usePager(g.data?.goalie_stats ?? []);
+  const eventPager = usePager(g.data?.events ?? []);
   if (g.error instanceof HmApiError && g.error.code === "GameNotFound") {
     return (
       <Shell crumbs={["Continental Hockey League", "Schedule", "Not found"]}>
@@ -39,9 +42,6 @@ const Box = () => {
   const awayGoalsByPeriod = d.away_goals_by_period;
   const hasOT = d.result_type === "OT" || d.result_type === "SO";
   const periodLabels = hasOT ? ["P1", "P2", "P3", "OT"] : ["P1", "P2", "P3"];
-  const skaterPager = usePager(d.skater_stats);
-  const goaliePager = usePager(d.goalie_stats);
-  const eventPager = usePager(d.events);
 
   return (
     <Shell crumbs={["Continental Hockey League", "Schedule", `${away.abbreviation} vs ${home.abbreviation}`]}>
