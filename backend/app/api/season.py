@@ -4,7 +4,23 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Game, GameEvent, GoalieGameStat, SkaterGameStat
+from app.models import (
+    DevelopmentEvent,
+    Game,
+    GameEvent,
+    Goalie,
+    GoalieGameStat,
+    SeasonProgression,
+    Skater,
+    SkaterGameStat,
+)
+from app.schemas.development import (
+    DevelopmentEventOut,
+    DevelopmentSummaryOut,
+    SeasonProgressionOut,
+    StartNextSeasonOut,
+)
+from app.services import season_rollover_service
 from app.services.advance_service import advance_matchday
 from app.services.league_service import get_league
 
@@ -197,3 +213,78 @@ def get_stats(db: Session = Depends(get_db)):
         top_goalie_save_pct=top_goalie_pct,
         top_goalie_shots_against=top_goalie_sa,
     )
+
+
+def _build_development_summary(db: Session, season_id: int) -> DevelopmentSummaryOut:
+    progressions = (
+        db.query(SeasonProgression)
+        .filter_by(to_season_id=season_id)
+        .order_by(SeasonProgression.id)
+        .all()
+    )
+    skater_info = {s.id: (s.team_id, s.name) for s in db.query(Skater).all()}
+    goalie_info = {g.id: (g.team_id, g.name) for g in db.query(Goalie).all()}
+    out: list[SeasonProgressionOut] = []
+    for sp in progressions:
+        if sp.player_type == "skater":
+            team_id, name = skater_info.get(sp.player_id, (None, "?"))
+        else:
+            team_id, name = goalie_info.get(sp.player_id, (None, "?"))
+        events = (
+            db.query(DevelopmentEvent)
+            .filter_by(season_progression_id=sp.id)
+            .order_by(DevelopmentEvent.id)
+            .all()
+        )
+        out.append(
+            SeasonProgressionOut(
+                player_type=sp.player_type,
+                player_id=sp.player_id,
+                player_name=name,
+                team_id=team_id,
+                age_before=sp.age_before,
+                age_after=sp.age_after,
+                overall_before=sp.overall_before,
+                overall_after=sp.overall_after,
+                potential=sp.potential,
+                development_type=sp.development_type,
+                summary_reason=sp.summary_reason,
+                events=[
+                    DevelopmentEventOut(
+                        attribute=e.attribute,
+                        old_value=e.old_value,
+                        new_value=e.new_value,
+                        delta=e.delta,
+                        reason=e.reason,
+                    )
+                    for e in events
+                ],
+            )
+        )
+    return DevelopmentSummaryOut(season_id=season_id, progressions=out)
+
+
+@router.post("/start-next", response_model=StartNextSeasonOut)
+def post_start_next(db: Session = Depends(get_db)):
+    res = season_rollover_service.start_next_season(db)
+    db.commit()
+    summary = _build_development_summary(db, res["new_season_id"])
+    return StartNextSeasonOut(
+        new_season_id=res["new_season_id"], development_summary=summary
+    )
+
+
+@router.get("/development-summary", response_model=DevelopmentSummaryOut)
+def get_development_summary(season_id: int | None = None, db: Session = Depends(get_db)):
+    from app.errors import DomainError
+
+    if season_id is None:
+        last = (
+            db.query(SeasonProgression)
+            .order_by(SeasonProgression.to_season_id.desc())
+            .first()
+        )
+        if last is None:
+            raise DomainError("no rollovers recorded")
+        season_id = last.to_season_id
+    return _build_development_summary(db, season_id)
