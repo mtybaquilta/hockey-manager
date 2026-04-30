@@ -3,8 +3,25 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from sqlalchemy import func
+
 from app.errors import GoalieNotFound, SkaterNotFound
-from app.models import Game, Goalie, GoalieGameStat, Skater, SkaterGameStat
+from app.models import (
+    DevelopmentEvent,
+    Game,
+    Goalie,
+    GoalieGameStat,
+    SeasonProgression,
+    Skater,
+    SkaterGameStat,
+)
+from app.schemas.career import (
+    GoalieCareerOut,
+    GoalieSeasonStatsOut,
+    SkaterCareerOut,
+    SkaterSeasonStatsOut,
+)
+from app.schemas.development import DevelopmentEventOut, SeasonProgressionOut
 
 
 class _SkaterAttrs(BaseModel):
@@ -69,6 +86,8 @@ class SkaterDetailOut(BaseModel):
     age: int
     position: str
     team_id: int
+    potential: int
+    development_type: str
     attributes: _SkaterAttrs
     totals: SkaterTotals
     game_log: list[SkaterGameLogRow]
@@ -79,6 +98,8 @@ class GoalieDetailOut(BaseModel):
     name: str
     age: int
     team_id: int
+    potential: int
+    development_type: str
     attributes: _GoalieAttrs
     totals: GoalieTotals
     game_log: list[GoalieGameLogRow]
@@ -134,6 +155,8 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
         age=sk.age,
         position=sk.position,
         team_id=sk.team_id,
+        potential=sk.potential,
+        development_type=sk.development_type,
         attributes=_SkaterAttrs(
             skating=sk.skating,
             shooting=sk.shooting,
@@ -192,6 +215,8 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         name=gk.name,
         age=gk.age,
         team_id=gk.team_id,
+        potential=gk.potential,
+        development_type=gk.development_type,
         attributes=_GoalieAttrs(
             reflexes=gk.reflexes,
             positioning=gk.positioning,
@@ -201,4 +226,163 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         ),
         totals=totals,
         game_log=log,
+    )
+
+
+def _build_player_history(
+    db: Session, player_type: str, player_id: int, name: str, team_id: int
+) -> list[SeasonProgressionOut]:
+    rows = (
+        db.query(SeasonProgression)
+        .filter_by(player_type=player_type, player_id=player_id)
+        .order_by(SeasonProgression.to_season_id.desc())
+        .all()
+    )
+    history: list[SeasonProgressionOut] = []
+    for sp in rows:
+        events = (
+            db.query(DevelopmentEvent)
+            .filter_by(season_progression_id=sp.id)
+            .order_by(DevelopmentEvent.id)
+            .all()
+        )
+        history.append(
+            SeasonProgressionOut(
+                player_type=sp.player_type,
+                player_id=sp.player_id,
+                player_name=name,
+                team_id=team_id,
+                age_before=sp.age_before,
+                age_after=sp.age_after,
+                overall_before=sp.overall_before,
+                overall_after=sp.overall_after,
+                potential=sp.potential,
+                development_type=sp.development_type,
+                summary_reason=sp.summary_reason,
+                events=[
+                    DevelopmentEventOut(
+                        attribute=e.attribute,
+                        old_value=e.old_value,
+                        new_value=e.new_value,
+                        delta=e.delta,
+                        reason=e.reason,
+                    )
+                    for e in events
+                ],
+            )
+        )
+    return history
+
+
+@router.get("/skater/{skater_id}/development")
+def get_skater_development(skater_id: int, db: Session = Depends(get_db)):
+    sk = db.query(Skater).filter_by(id=skater_id).first()
+    if not sk:
+        raise SkaterNotFound(f"skater {skater_id} not found")
+    history = _build_player_history(db, "skater", sk.id, sk.name, sk.team_id)
+    return {
+        "player_id": sk.id,
+        "name": sk.name,
+        "history": [h.model_dump() for h in history],
+    }
+
+
+@router.get("/goalie/{goalie_id}/development")
+def get_goalie_development(goalie_id: int, db: Session = Depends(get_db)):
+    gk = db.query(Goalie).filter_by(id=goalie_id).first()
+    if not gk:
+        raise GoalieNotFound(f"goalie {goalie_id} not found")
+    history = _build_player_history(db, "goalie", gk.id, gk.name, gk.team_id)
+    return {
+        "player_id": gk.id,
+        "name": gk.name,
+        "history": [h.model_dump() for h in history],
+    }
+
+
+@router.get("/skater/{skater_id}/career", response_model=SkaterCareerOut)
+def get_skater_career(skater_id: int, db: Session = Depends(get_db)):
+    sk = db.query(Skater).filter_by(id=skater_id).first()
+    if not sk:
+        raise SkaterNotFound(f"skater {skater_id} not found")
+    rows = (
+        db.query(
+            Game.season_id.label("season_id"),
+            func.count(SkaterGameStat.id).label("gp"),
+            func.coalesce(func.sum(SkaterGameStat.goals), 0).label("g"),
+            func.coalesce(func.sum(SkaterGameStat.assists), 0).label("a"),
+            func.coalesce(func.sum(SkaterGameStat.shots), 0).label("sog"),
+        )
+        .join(Game, SkaterGameStat.game_id == Game.id)
+        .filter(SkaterGameStat.skater_id == skater_id)
+        .group_by(Game.season_id)
+        .order_by(Game.season_id)
+        .all()
+    )
+    by_season = [
+        SkaterSeasonStatsOut(
+            season_id=r.season_id,
+            gp=r.gp,
+            g=r.g,
+            a=r.a,
+            pts=r.g + r.a,
+            sog=r.sog,
+        )
+        for r in rows
+    ]
+    totals = SkaterSeasonStatsOut(
+        season_id=0,
+        gp=sum(s.gp for s in by_season),
+        g=sum(s.g for s in by_season),
+        a=sum(s.a for s in by_season),
+        pts=sum(s.pts for s in by_season),
+        sog=sum(s.sog for s in by_season),
+    )
+    return SkaterCareerOut(
+        player_id=sk.id, name=sk.name, by_season=by_season, totals=totals
+    )
+
+
+@router.get("/goalie/{goalie_id}/career", response_model=GoalieCareerOut)
+def get_goalie_career(goalie_id: int, db: Session = Depends(get_db)):
+    gk = db.query(Goalie).filter_by(id=goalie_id).first()
+    if not gk:
+        raise GoalieNotFound(f"goalie {goalie_id} not found")
+    rows = (
+        db.query(
+            Game.season_id.label("season_id"),
+            func.count(GoalieGameStat.id).label("gp"),
+            func.coalesce(func.sum(GoalieGameStat.shots_against), 0).label("sa"),
+            func.coalesce(func.sum(GoalieGameStat.saves), 0).label("sv"),
+            func.coalesce(func.sum(GoalieGameStat.goals_against), 0).label("ga"),
+        )
+        .join(Game, GoalieGameStat.game_id == Game.id)
+        .filter(GoalieGameStat.goalie_id == goalie_id)
+        .group_by(Game.season_id)
+        .order_by(Game.season_id)
+        .all()
+    )
+    by_season = [
+        GoalieSeasonStatsOut(
+            season_id=r.season_id,
+            gp=r.gp,
+            shots_against=r.sa,
+            saves=r.sv,
+            goals_against=r.ga,
+            sv_pct=(r.sv / r.sa) if r.sa else 0.0,
+        )
+        for r in rows
+    ]
+    total_sa = sum(s.shots_against for s in by_season)
+    total_sv = sum(s.saves for s in by_season)
+    totals = GoalieSeasonStatsOut(
+        season_id=0,
+        gp=sum(s.gp for s in by_season),
+        shots_against=total_sa,
+        saves=total_sv,
+        goals_against=sum(s.goals_against for s in by_season),
+        sv_pct=(total_sv / total_sa) if total_sa else 0.0,
+    )
+    return GoalieCareerOut(
+        player_id=gk.id, name=gk.name, by_season=by_season, totals=totals
     )
