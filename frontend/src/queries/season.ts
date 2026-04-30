@@ -22,3 +22,23 @@ export const useAdvance = () => {
     },
   });
 };
+
+export interface SimToResponse {
+  matchdays_simulated: number;
+  games_simulated: number;
+  current_matchday: number;
+  season_status: "active" | "complete";
+}
+
+export const useSimTo = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (matchday?: number) =>
+      api.post<SimToResponse>(
+        matchday !== undefined ? `/api/season/sim-to?matchday=${matchday}` : "/api/season/sim-to"
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries();
+    },
+  });
+};

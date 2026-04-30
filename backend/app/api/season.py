@@ -36,6 +36,13 @@ class SeasonStatusOut(BaseModel):
     status: str
 
 
+class SimToOut(BaseModel):
+    matchdays_simulated: int
+    games_simulated: int
+    current_matchday: int
+    season_status: str
+
+
 router = APIRouter(prefix="/season", tags=["season"])
 
 
@@ -44,6 +51,33 @@ def post_advance(db: Session = Depends(get_db)):
     res = advance_matchday(db)
     db.commit()
     return AdvanceOut(**res)
+
+
+@router.post("/sim-to", response_model=SimToOut)
+def post_sim_to(matchday: int | None = None, db: Session = Depends(get_db)):
+    """Loop advance_matchday until target matchday is reached or season completes.
+
+    matchday=None means sim to end of season.
+    """
+    matchdays = 0
+    games_simmed = 0
+    last = {"current_matchday": 0, "season_status": "active"}
+    while True:
+        res = advance_matchday(db)
+        matchdays += 1
+        games_simmed += len(res["advanced_game_ids"])
+        last = res
+        if res["season_status"] == "complete":
+            break
+        if matchday is not None and res["current_matchday"] > matchday:
+            break
+    db.commit()
+    return SimToOut(
+        matchdays_simulated=matchdays,
+        games_simulated=games_simmed,
+        current_matchday=last["current_matchday"],
+        season_status=last["season_status"],
+    )
 
 
 @router.get("/status", response_model=SeasonStatusOut)

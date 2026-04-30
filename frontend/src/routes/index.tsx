@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Card } from "../components/Card";
 import { Logo, TeamRow } from "../components/Logo";
 import { ResultBadge } from "../components/ResultBadge";
@@ -6,7 +7,7 @@ import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { useLeague } from "../queries/league";
 import { useSchedule } from "../queries/schedule";
-import { useAdvance, useSeasonStatus } from "../queries/season";
+import { useAdvance, useSeasonStatus, useSimTo } from "../queries/season";
 import { useStandings } from "../queries/standings";
 import { useTeams } from "../queries/teams";
 
@@ -17,6 +18,8 @@ const Dashboard = () => {
   const teams = useTeams();
   const status = useSeasonStatus();
   const advance = useAdvance();
+  const simTo = useSimTo();
+  const [simTarget, setSimTarget] = useState<string>("");
   const nav = useNavigate();
 
   if (!league.data || !schedule.data || !standings.data || !teams.data) {
@@ -118,7 +121,52 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
+      {!seasonComplete && (
+        <Card title="Dev · Sim Forward" sub="dev only">
+          <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: "var(--ink-3)" }}>Sim to matchday</span>
+            <input
+              type="number"
+              min={status.data?.current_matchday ?? 1}
+              value={simTarget}
+              placeholder={String(status.data?.current_matchday ?? 1)}
+              onChange={(e) => setSimTarget(e.target.value)}
+              style={{ width: 80, padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 4, fontFamily: "'Roboto Condensed', monospace" }}
+            />
+            <button
+              className="btn"
+              disabled={simTo.isPending || !simTarget}
+              onClick={() => {
+                const n = Number(simTarget);
+                if (!Number.isFinite(n) || n < 1) return;
+                simTo.mutate(n, {
+                  onSuccess: (r) => {
+                    if (r.season_status === "complete") nav({ to: "/season-complete" });
+                  },
+                });
+              }}
+            >
+              {simTo.isPending ? "Simulating…" : "Go"}
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              className="btn btn-primary"
+              disabled={simTo.isPending}
+              onClick={() =>
+                simTo.mutate(undefined, {
+                  onSuccess: (r) => {
+                    if (r.season_status === "complete") nav({ to: "/season-complete" });
+                  },
+                })
+              }
+            >
+              {simTo.isPending ? "Simulating…" : "Sim to End of Season"}
+            </button>
+          </div>
+        </Card>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14, marginTop: 14 }}>
         <Card
           title="Recent Results"
           sub="Last 6"
