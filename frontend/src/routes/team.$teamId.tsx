@@ -14,17 +14,17 @@ const TeamPage = () => {
   const league = useLeague();
   const matchRoute = useMatchRoute();
   const isChild = matchRoute({ to: "/team/$teamId/lineup", params: { teamId } });
+  const F = roster.data?.skaters.filter((s) => s.position !== "LD" && s.position !== "RD") ?? [];
+  const D = roster.data?.skaters.filter((s) => s.position === "LD" || s.position === "RD") ?? [];
+  const G = roster.data?.goalies ?? [];
+  const fPager = usePager(F);
+  const dPager = usePager(D);
+  const gPager = usePager(G);
   if (isChild) return <Outlet />;
   if (!roster.data || !league.data) {
     return <Shell crumbs={["Continental Hockey League", "My Team"]}>Loading…</Shell>;
   }
   const isUser = league.data.user_team_id === id;
-  const F = roster.data.skaters.filter((s) => s.position !== "LD" && s.position !== "RD");
-  const D = roster.data.skaters.filter((s) => s.position === "LD" || s.position === "RD");
-  const G = roster.data.goalies;
-  const fPager = usePager(F);
-  const dPager = usePager(D);
-  const gPager = usePager(G);
 
   const SkaterRow = ({ p }: { p: (typeof F)[number] }) => {
     const ovr = Math.round(0.25 * p.shooting + 0.2 * p.passing + 0.2 * p.skating + 0.2 * p.defense + 0.15 * p.physical);
