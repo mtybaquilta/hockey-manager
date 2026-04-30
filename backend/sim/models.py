@@ -69,9 +69,21 @@ class SimTeamLineup:
 
 
 @dataclass(frozen=True)
+class SimGameplan:
+    style: str  # "balanced" | "offensive" | "defensive" | "physical"
+    line_usage: str  # "balanced" | "ride_top_lines" | "roll_all_lines"
+
+
+@dataclass(frozen=True)
+class SimTeamInput:
+    lineup: SimTeamLineup
+    gameplan: SimGameplan
+
+
+@dataclass(frozen=True)
 class SimGameInput:
-    home: SimTeamLineup
-    away: SimTeamLineup
+    home: SimTeamInput
+    away: SimTeamInput
     seed: int
 
 

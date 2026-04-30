@@ -2,14 +2,16 @@ from sim.engine import simulate_game
 from sim.models import (
     Position,
     SimGameInput,
+    SimGameplan,
     SimGoalie,
     SimLine,
     SimSkater,
+    SimTeamInput,
     SimTeamLineup,
 )
 
 
-def _team(off_id_base: int) -> SimTeamLineup:
+def _team(off_id_base: int, gameplan: SimGameplan | None = None) -> SimTeamInput:
     fwd = lambda i, p: SimSkater(id=i, position=p, skating=75, shooting=75, passing=75, defense=60, physical=65)
     dfn = lambda i: SimSkater(id=i, position=Position.LD, skating=70, shooting=60, passing=65, defense=80, physical=75)
     forward_lines = tuple(
@@ -24,7 +26,8 @@ def _team(off_id_base: int) -> SimTeamLineup:
     )
     pairs = tuple(SimLine(skaters=(dfn(off_id_base + 100 + i * 2), dfn(off_id_base + 101 + i * 2))) for i in range(3))
     g = SimGoalie(id=off_id_base + 200, reflexes=80, positioning=80, rebound_control=70, puck_handling=60, mental=75)
-    return SimTeamLineup(forward_lines=forward_lines, defense_pairs=pairs, starting_goalie=g)
+    lineup = SimTeamLineup(forward_lines=forward_lines, defense_pairs=pairs, starting_goalie=g)
+    return SimTeamInput(lineup=lineup, gameplan=gameplan or SimGameplan("balanced", "balanced"))
 
 
 def test_same_seed_same_result():
