@@ -5,6 +5,7 @@ import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
+import { useSkaterCareer, useSkaterDevelopment } from "../queries/development";
 import { useSkaterDetail } from "../queries/stats";
 import { useTeams } from "../queries/teams";
 
@@ -16,6 +17,8 @@ const SkaterDetailPage = () => {
   const teams = useTeams();
   const nav = useNavigate();
   const pager = usePager(q.data?.game_log ?? []);
+  const dev = useSkaterDevelopment(Number(id));
+  const career = useSkaterCareer(Number(id));
   if (!q.data || !teams.data) {
     return <Shell crumbs={["Continental Hockey League", "Stats", "Player"]}>Loading…</Shell>;
   }
@@ -43,7 +46,7 @@ const SkaterDetailPage = () => {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 14, marginBottom: 14 }}>
-        <Card title="Attributes">
+        <Card title="Attributes" sub={`${ovr} OVR / ${p.potential} POT · ${p.development_type}`}>
           <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
             {([
               ["OVR", ovr],
@@ -130,6 +133,73 @@ const SkaterDetailPage = () => {
         </Table>
         <Pagination {...pager} onPage={pager.setPage} />
       </Card>
+
+      {career.data && career.data.by_season.length > 0 && (
+        <Card title="Career">
+          <Table>
+            <thead>
+              <tr>
+                <Th>Season</Th>
+                <Th className="num">GP</Th>
+                <Th className="num">G</Th>
+                <Th className="num">A</Th>
+                <Th className="num">PTS</Th>
+                <Th className="num">SOG</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {career.data.by_season.map((row) => (
+                <tr key={row.season_id}>
+                  <Td>{row.season_id}</Td>
+                  <Td className="num">{row.gp}</Td>
+                  <Td className="num">{row.g}</Td>
+                  <Td className="num">{row.a}</Td>
+                  <Td className="num"><b>{row.pts}</b></Td>
+                  <Td className="num">{row.sog}</Td>
+                </tr>
+              ))}
+              <tr style={{ fontWeight: 700, borderTop: "2px solid var(--line)" }}>
+                <Td>Total</Td>
+                <Td className="num">{career.data.totals.gp}</Td>
+                <Td className="num">{career.data.totals.g}</Td>
+                <Td className="num">{career.data.totals.a}</Td>
+                <Td className="num">{career.data.totals.pts}</Td>
+                <Td className="num">{career.data.totals.sog}</Td>
+              </tr>
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
+      {dev.data && dev.data.history.length > 0 && (
+        <Card title="Development History" sub={`${dev.data.history.length} season(s)`}>
+          <div>
+            {dev.data.history.map((sp) => {
+              const arrow = sp.overall_after === sp.overall_before ? "→" : sp.overall_after > sp.overall_before ? "↑" : "↓";
+              return (
+                <div key={`${sp.age_before}-${sp.age_after}`} style={{ padding: "10px 14px", borderBottom: "1px solid var(--line)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Age {sp.age_before} → {sp.age_after}</span>
+                    <span style={{ fontFamily: "'Roboto Condensed', monospace" }}>
+                      OVR {sp.overall_before} {arrow} {sp.overall_after}{" "}
+                      <span style={{ color: "var(--ink-3)", fontStyle: "italic" }}>({sp.summary_reason})</span>
+                    </span>
+                  </div>
+                  {sp.events.length > 0 && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: "var(--ink-2)", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+                      {sp.events.map((e, i) => (
+                        <span key={i}>
+                          {e.attribute}: {e.old_value} → {e.new_value} ({e.delta > 0 ? "+" : ""}{e.delta})
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </Shell>
   );
 };

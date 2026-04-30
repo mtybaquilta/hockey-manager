@@ -125,6 +125,7 @@ export interface SkaterGameLogRow {
 }
 export interface SkaterDetail {
   id: number; name: string; age: number; position: Position; team_id: number;
+  potential: number; development_type: string;
   attributes: { skating: number; shooting: number; passing: number; defense: number; physical: number };
   totals: SkaterTotals;
   game_log: SkaterGameLogRow[];
@@ -139,9 +140,43 @@ export interface GoalieGameLogRow {
 }
 export interface GoalieDetail {
   id: number; name: string; age: number; team_id: number;
+  potential: number; development_type: string;
   attributes: { reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number };
   totals: GoalieTotals;
   game_log: GoalieGameLogRow[];
+}
+
+export interface DevelopmentEventOut {
+  attribute: string; old_value: number; new_value: number; delta: number; reason: string;
+}
+export interface SeasonProgressionOut {
+  player_type: "skater" | "goalie"; player_id: number; player_name: string;
+  team_id: number | null;
+  age_before: number; age_after: number;
+  overall_before: number; overall_after: number;
+  potential: number; development_type: string; summary_reason: string;
+  events: DevelopmentEventOut[];
+}
+export interface DevelopmentSummary {
+  season_id: number; progressions: SeasonProgressionOut[];
+}
+export interface StartNextSeasonResponse {
+  new_season_id: number; development_summary: DevelopmentSummary;
+}
+export interface PlayerDevelopmentHistory {
+  player_id: number; name: string; history: SeasonProgressionOut[];
+}
+export interface SkaterSeasonStats {
+  season_id: number; gp: number; g: number; a: number; pts: number; sog: number;
+}
+export interface SkaterCareer {
+  player_id: number; name: string; by_season: SkaterSeasonStats[]; totals: SkaterSeasonStats;
+}
+export interface GoalieSeasonStats {
+  season_id: number; gp: number; shots_against: number; saves: number; goals_against: number; sv_pct: number;
+}
+export interface GoalieCareer {
+  player_id: number; name: string; by_season: GoalieSeasonStats[]; totals: GoalieSeasonStats;
 }
 
 export interface ApiError { error_code: string; message: string; }

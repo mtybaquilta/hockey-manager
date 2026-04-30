@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Logo } from "../components/Logo";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
+import { useStartNextSeason } from "../queries/development";
 import { useCreateLeague } from "../queries/league";
 import { useSeasonStats } from "../queries/season";
 import { useStandings } from "../queries/standings";
@@ -16,6 +17,8 @@ const Done = () => {
   const stats = useSeasonStats();
   const teams = useTeams();
   const create = useCreateLeague();
+  const startNext = useStartNextSeason();
+  const navigate = useNavigate();
   if (!s.data || !stats.data || !teams.data) {
     return <Shell crumbs={["Continental Hockey League", "Season Complete"]}>Loading…</Shell>;
   }
@@ -27,9 +30,24 @@ const Done = () => {
     <Shell
       crumbs={["Continental Hockey League", "Season Complete"]}
       topRight={
-        <button className="btn btn-primary" disabled={create.isPending} onClick={() => create.mutate(undefined)}>
-          {create.isPending ? "Resetting…" : "New League"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn btn-primary"
+            disabled={startNext.isPending}
+            onClick={() =>
+              startNext.mutate(undefined, {
+                onSuccess: (res) => {
+                  navigate({ to: "/development-summary", search: { season_id: res.new_season_id } });
+                },
+              })
+            }
+          >
+            {startNext.isPending ? "Starting…" : "Start Next Season"}
+          </button>
+          <button className="btn" disabled={create.isPending} onClick={() => create.mutate(undefined)}>
+            {create.isPending ? "Resetting…" : "New League"}
+          </button>
+        </div>
       }
     >
       {/* Champion banner */}
