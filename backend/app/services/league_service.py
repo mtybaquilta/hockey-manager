@@ -15,7 +15,9 @@ from app.models import (
     SkaterGameStat,
     Standing,
     Team,
+    TeamGameplan,
 )
+from app.services.gameplan_service import generate_gameplans_for_league
 from app.services.generation.lineups import generate_default_lineups
 from app.services.generation.schedule import generate_schedule
 from app.services.generation.teams import generate_teams
@@ -31,6 +33,7 @@ def _wipe(db: Session) -> None:
         Lineup,
         Skater,
         Goalie,
+        TeamGameplan,
         Team,
         Season,
     ]:
@@ -51,6 +54,9 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
         db.add(Standing(team_id=t.id, season_id=season.id))
     season.user_team_id = teams[0].id
     db.flush()
+    generate_gameplans_for_league(
+        rng, db, [t.id for t in teams], user_team_id=season.user_team_id
+    )
     return season
 
 

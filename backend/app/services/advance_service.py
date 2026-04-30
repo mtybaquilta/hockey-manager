@@ -11,6 +11,7 @@ from app.models import (
     Skater,
     SkaterGameStat,
     Standing,
+    TeamGameplan,
 )
 from sim.engine import simulate_game
 from sim.models import (
@@ -37,6 +38,13 @@ PAIR_DEF_SLOTS = [
     ("pair2_ld_id", "pair2_rd_id"),
     ("pair3_ld_id", "pair3_rd_id"),
 ]
+
+
+def _gameplan_for(db: Session, team_id: int) -> SimGameplan:
+    gp = db.query(TeamGameplan).filter_by(team_id=team_id).first()
+    if gp is None:
+        return SimGameplan(style="balanced", line_usage="balanced")
+    return SimGameplan(style=gp.style, line_usage=gp.line_usage)
 
 
 def _to_sim_skater(s: Skater) -> SimSkater:
@@ -137,11 +145,12 @@ def advance_matchday(db: Session) -> dict:
         home_lu = _build_lineup(db, g.home_team_id)
         away_lu = _build_lineup(db, g.away_team_id)
         seed = derive_game_seed(season.seed, g.id)
-        default_gp = SimGameplan(style="balanced", line_usage="balanced")
+        home_gp = _gameplan_for(db, g.home_team_id)
+        away_gp = _gameplan_for(db, g.away_team_id)
         result = simulate_game(
             SimGameInput(
-                home=SimTeamInput(lineup=home_lu, gameplan=default_gp),
-                away=SimTeamInput(lineup=away_lu, gameplan=default_gp),
+                home=SimTeamInput(lineup=home_lu, gameplan=home_gp),
+                away=SimTeamInput(lineup=away_lu, gameplan=away_gp),
                 seed=seed,
             )
         )
