@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "../components/Card";
 import { Logo } from "../components/Logo";
 import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
+import { useAllGameplans } from "../queries/gameplan";
 import { useLeague } from "../queries/league";
 import { useStandings } from "../queries/standings";
 import { useTeams } from "../queries/teams";
@@ -12,9 +13,13 @@ const StandingsPage = () => {
   const s = useStandings();
   const l = useLeague();
   const teams = useTeams();
+  const gameplans = useAllGameplans();
   if (!s.data || !l.data || !teams.data) {
     return <Shell crumbs={["Continental Hockey League", "Standings"]}>Loading…</Shell>;
   }
+  const gpByTeam = new Map(
+    (gameplans.data?.rows ?? []).map((g) => [g.team_id, g]),
+  );
   const userId = l.data.user_team_id;
   const playoffCut = Math.min(4, s.data.rows.length - 1);
   const pager = usePager(s.data.rows);
@@ -44,6 +49,8 @@ const StandingsPage = () => {
               <Th className="num">GA</Th>
               <Th className="num">DIFF</Th>
               <Th className="num">PT%</Th>
+              <Th>Style</Th>
+              <Th>Lines</Th>
             </tr>
           </thead>
           <tbody>
@@ -56,11 +63,17 @@ const StandingsPage = () => {
                 <tr key={r.team_id} className={r.team_id === userId ? "me" : ""}>
                   <Td className="rank">{pager.page * pager.pageSize + i + 1}</Td>
                   <Td>
-                    <span className="team-row">
-                      <Logo teamId={t.id} size={22} />
-                      <span className="nm">{t.name}</span>
-                      <span className="ab">{t.abbreviation}</span>
-                    </span>
+                    <Link
+                      to="/team/$teamId"
+                      params={{ teamId: String(t.id) }}
+                      style={{ color: "inherit", textDecoration: "none" }}
+                    >
+                      <span className="team-row">
+                        <Logo teamId={t.id} size={22} />
+                        <span className="nm">{t.name}</span>
+                        <span className="ab">{t.abbreviation}</span>
+                      </span>
+                    </Link>
                   </Td>
                   <Td className="num">{r.games_played}</Td>
                   <Td className="num">{r.wins}</Td>
@@ -76,6 +89,12 @@ const StandingsPage = () => {
                     {diff}
                   </Td>
                   <Td className="num">{pct}</Td>
+                  <Td>
+                    <span className="chip">{gpByTeam.get(r.team_id)?.style ?? "—"}</span>
+                  </Td>
+                  <Td>
+                    <span className="chip">{gpByTeam.get(r.team_id)?.line_usage ?? "—"}</span>
+                  </Td>
                 </tr>
               );
             })}

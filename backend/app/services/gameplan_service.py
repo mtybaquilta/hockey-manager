@@ -76,6 +76,10 @@ def is_editable(db: Session, team_id: int) -> bool:
     return _current_user_team_id(db) == team_id
 
 
+def list_gameplans(db: Session) -> list[TeamGameplan]:
+    return db.query(TeamGameplan).order_by(TeamGameplan.team_id).all()
+
+
 def generate_gameplans_for_league(
     rng: random.Random, db: Session, team_ids: list[int], user_team_id: int | None
 ) -> None:

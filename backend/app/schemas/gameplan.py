@@ -16,3 +16,7 @@ class GameplanOut(BaseModel):
 class UpdateGameplanIn(BaseModel):
     style: GameplanStyle
     line_usage: GameplanLineUsage
+
+
+class GameplansListOut(BaseModel):
+    rows: list[GameplanOut]

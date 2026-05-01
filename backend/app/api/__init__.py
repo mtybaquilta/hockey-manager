@@ -15,5 +15,6 @@ for r in (
     stats.router,
     players.router,
     gameplan.router,
+    gameplan.list_router,
 ):
     api_router.include_router(r)

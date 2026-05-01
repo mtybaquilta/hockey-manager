@@ -1,0 +1,458 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e7]:
+      - text: CHL
+      - text: Manager '26
+    - generic [ref=e8]:
+      - generic [ref=e10]: LUL
+      - generic [ref=e11]:
+        - text: Luleå Frost
+        - generic [ref=e12]: 0-0-0
+    - navigation [ref=e13]:
+      - generic [ref=e14]: Manage
+      - link "Dashboard" [ref=e15] [cursor=pointer]:
+        - /url: /
+        - img [ref=e16]
+        - text: Dashboard
+      - link "Schedule" [ref=e18] [cursor=pointer]:
+        - /url: /schedule
+        - img [ref=e19]
+        - text: Schedule
+      - link "Standings" [ref=e21] [cursor=pointer]:
+        - /url: /standings
+        - img [ref=e22]
+        - text: Standings
+      - link "My Team" [ref=e24] [cursor=pointer]:
+        - /url: /team/1022
+        - img [ref=e25]
+        - text: My Team
+      - link "Lineup" [ref=e27] [cursor=pointer]:
+        - /url: /team/1022/lineup
+        - img [ref=e28]
+        - text: Lineup
+      - link "Stats" [ref=e30] [cursor=pointer]:
+        - /url: /stats
+        - img [ref=e31]
+        - text: Stats
+    - generic [ref=e33]:
+      - generic [ref=e34]: Matchday 1
+      - generic [ref=e35]: "'25-26"
+  - generic [ref=e36]:
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]: Continental Hockey League
+        - generic [ref=e40]:
+          - generic [ref=e41]: /
+          - generic [ref=e42]: My Team
+      - generic [ref=e43]: MATCHDAY 1
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - heading "Gävle Guardians" [level=1] [ref=e47]
+        - generic [ref=e48]: 20 active · GAV
+      - generic [ref=e49]:
+        - generic [ref=e50]: Forwards · 12
+        - table [ref=e52]:
+          - rowgroup [ref=e53]:
+            - row "Player Pos Age OVR SK SH PS DF PH" [ref=e54]:
+              - columnheader "Player" [ref=e55]
+              - columnheader "Pos" [ref=e56]
+              - columnheader "Age" [ref=e57]
+              - columnheader "OVR" [ref=e58]
+              - columnheader "SK" [ref=e59]
+              - columnheader "SH" [ref=e60]
+              - columnheader "PS" [ref=e61]
+              - columnheader "DF" [ref=e62]
+              - columnheader "PH" [ref=e63]
+          - rowgroup [ref=e64]:
+            - row "Alex Weiss C 35 71 75 72 68 73 63" [ref=e65]:
+              - cell "Alex Weiss" [ref=e66]:
+                - link "Alex Weiss" [ref=e67] [cursor=pointer]:
+                  - /url: /player/skater/18383
+              - cell "C" [ref=e68]
+              - cell "35" [ref=e69]
+              - cell "71" [ref=e70]:
+                - generic [ref=e71]: "71"
+              - cell "75" [ref=e72]:
+                - generic [ref=e73]: "75"
+              - cell "72" [ref=e74]:
+                - generic [ref=e75]: "72"
+              - cell "68" [ref=e76]:
+                - generic [ref=e77]: "68"
+              - cell "73" [ref=e78]:
+                - generic [ref=e79]: "73"
+              - cell "63" [ref=e80]:
+                - generic [ref=e81]: "63"
+            - row "Ryker Falk C 22 63 68 60 53 67 72" [ref=e82]:
+              - cell "Ryker Falk" [ref=e83]:
+                - link "Ryker Falk" [ref=e84] [cursor=pointer]:
+                  - /url: /player/skater/18384
+              - cell "C" [ref=e85]
+              - cell "22" [ref=e86]
+              - cell "63" [ref=e87]:
+                - generic [ref=e88]: "63"
+              - cell "68" [ref=e89]:
+                - generic [ref=e90]: "68"
+              - cell "60" [ref=e91]:
+                - generic [ref=e92]: "60"
+              - cell "53" [ref=e93]:
+                - generic [ref=e94]: "53"
+              - cell "67" [ref=e95]:
+                - generic [ref=e96]: "67"
+              - cell "72" [ref=e97]:
+                - generic [ref=e98]: "72"
+            - row "Jared Bishop C 32 63 64 55 63 64 72" [ref=e99]:
+              - cell "Jared Bishop" [ref=e100]:
+                - link "Jared Bishop" [ref=e101] [cursor=pointer]:
+                  - /url: /player/skater/18385
+              - cell "C" [ref=e102]
+              - cell "32" [ref=e103]
+              - cell "63" [ref=e104]:
+                - generic [ref=e105]: "63"
+              - cell "64" [ref=e106]:
+                - generic [ref=e107]: "64"
+              - cell "55" [ref=e108]:
+                - generic [ref=e109]: "55"
+              - cell "63" [ref=e110]:
+                - generic [ref=e111]: "63"
+              - cell "64" [ref=e112]:
+                - generic [ref=e113]: "64"
+              - cell "72" [ref=e114]:
+                - generic [ref=e115]: "72"
+            - row "Sam Arnason C 32 65 68 65 65 64 59" [ref=e116]:
+              - cell "Sam Arnason" [ref=e117]:
+                - link "Sam Arnason" [ref=e118] [cursor=pointer]:
+                  - /url: /player/skater/18386
+              - cell "C" [ref=e119]
+              - cell "32" [ref=e120]
+              - cell "65" [ref=e121]:
+                - generic [ref=e122]: "65"
+              - cell "68" [ref=e123]:
+                - generic [ref=e124]: "68"
+              - cell "65" [ref=e125]:
+                - generic [ref=e126]: "65"
+              - cell "65" [ref=e127]:
+                - generic [ref=e128]: "65"
+              - cell "64" [ref=e129]:
+                - generic [ref=e130]: "64"
+              - cell "59" [ref=e131]:
+                - generic [ref=e132]: "59"
+            - row "Elias Brodie LW 35 64 61 65 69 62 61" [ref=e133]:
+              - cell "Elias Brodie" [ref=e134]:
+                - link "Elias Brodie" [ref=e135] [cursor=pointer]:
+                  - /url: /player/skater/18379
+              - cell "LW" [ref=e136]
+              - cell "35" [ref=e137]
+              - cell "64" [ref=e138]:
+                - generic [ref=e139]: "64"
+              - cell "61" [ref=e140]:
+                - generic [ref=e141]: "61"
+              - cell "65" [ref=e142]:
+                - generic [ref=e143]: "65"
+              - cell "69" [ref=e144]:
+                - generic [ref=e145]: "69"
+              - cell "62" [ref=e146]:
+                - generic [ref=e147]: "62"
+              - cell "61" [ref=e148]:
+                - generic [ref=e149]: "61"
+            - row "Seb Halvorsen LW 22 69 65 74 79 62 64" [ref=e150]:
+              - cell "Seb Halvorsen" [ref=e151]:
+                - link "Seb Halvorsen" [ref=e152] [cursor=pointer]:
+                  - /url: /player/skater/18380
+              - cell "LW" [ref=e153]
+              - cell "22" [ref=e154]
+              - cell "69" [ref=e155]:
+                - generic [ref=e156]: "69"
+              - cell "65" [ref=e157]:
+                - generic [ref=e158]: "65"
+              - cell "74" [ref=e159]:
+                - generic [ref=e160]: "74"
+              - cell "79" [ref=e161]:
+                - generic [ref=e162]: "79"
+              - cell "62" [ref=e163]:
+                - generic [ref=e164]: "62"
+              - cell "64" [ref=e165]:
+                - generic [ref=e166]: "64"
+            - row "Dennis Weiss LW 31 66 61 65 74 62 68" [ref=e167]:
+              - cell "Dennis Weiss" [ref=e168]:
+                - link "Dennis Weiss" [ref=e169] [cursor=pointer]:
+                  - /url: /player/skater/18381
+              - cell "LW" [ref=e170]
+              - cell "31" [ref=e171]
+              - cell "66" [ref=e172]:
+                - generic [ref=e173]: "66"
+              - cell "61" [ref=e174]:
+                - generic [ref=e175]: "61"
+              - cell "65" [ref=e176]:
+                - generic [ref=e177]: "65"
+              - cell "74" [ref=e178]:
+                - generic [ref=e179]: "74"
+              - cell "62" [ref=e180]:
+                - generic [ref=e181]: "62"
+              - cell "68" [ref=e182]:
+                - generic [ref=e183]: "68"
+            - row "Casey Quist LW 22 72 64 86 61 76 70" [ref=e184]:
+              - cell "Casey Quist" [ref=e185]:
+                - link "Casey Quist" [ref=e186] [cursor=pointer]:
+                  - /url: /player/skater/18382
+              - cell "LW" [ref=e187]
+              - cell "22" [ref=e188]
+              - cell "72" [ref=e189]:
+                - generic [ref=e190]: "72"
+              - cell "64" [ref=e191]:
+                - generic [ref=e192]: "64"
+              - cell "86" [ref=e193]:
+                - generic [ref=e194]: "86"
+              - cell "61" [ref=e195]:
+                - generic [ref=e196]: "61"
+              - cell "76" [ref=e197]:
+                - generic [ref=e198]: "76"
+              - cell "70" [ref=e199]:
+                - generic [ref=e200]: "70"
+            - row "Jonah Knight RW 20 68 68 65 77 66 61" [ref=e201]:
+              - cell "Jonah Knight" [ref=e202]:
+                - link "Jonah Knight" [ref=e203] [cursor=pointer]:
+                  - /url: /player/skater/18387
+              - cell "RW" [ref=e204]
+              - cell "20" [ref=e205]
+              - cell "68" [ref=e206]:
+                - generic [ref=e207]: "68"
+              - cell "68" [ref=e208]:
+                - generic [ref=e209]: "68"
+              - cell "65" [ref=e210]:
+                - generic [ref=e211]: "65"
+              - cell "77" [ref=e212]:
+                - generic [ref=e213]: "77"
+              - cell "66" [ref=e214]:
+                - generic [ref=e215]: "66"
+              - cell "61" [ref=e216]:
+                - generic [ref=e217]: "61"
+            - row "Hugo Finch RW 23 73 67 81 78 71 64" [ref=e218]:
+              - cell "Hugo Finch" [ref=e219]:
+                - link "Hugo Finch" [ref=e220] [cursor=pointer]:
+                  - /url: /player/skater/18388
+              - cell "RW" [ref=e221]
+              - cell "23" [ref=e222]
+              - cell "73" [ref=e223]:
+                - generic [ref=e224]: "73"
+              - cell "67" [ref=e225]:
+                - generic [ref=e226]: "67"
+              - cell "81" [ref=e227]:
+                - generic [ref=e228]: "81"
+              - cell "78" [ref=e229]:
+                - generic [ref=e230]: "78"
+              - cell "71" [ref=e231]:
+                - generic [ref=e232]: "71"
+              - cell "64" [ref=e233]:
+                - generic [ref=e234]: "64"
+            - row "Elias Yates RW 27 69 69 62 83 58 79" [ref=e235]:
+              - cell "Elias Yates" [ref=e236]:
+                - link "Elias Yates" [ref=e237] [cursor=pointer]:
+                  - /url: /player/skater/18389
+              - cell "RW" [ref=e238]
+              - cell "27" [ref=e239]
+              - cell "69" [ref=e240]:
+                - generic [ref=e241]: "69"
+              - cell "69" [ref=e242]:
+                - generic [ref=e243]: "69"
+              - cell "62" [ref=e244]:
+                - generic [ref=e245]: "62"
+              - cell "83" [ref=e246]:
+                - generic [ref=e247]: "83"
+              - cell "58" [ref=e248]:
+                - generic [ref=e249]: "58"
+              - cell "79" [ref=e250]:
+                - generic [ref=e251]: "79"
+            - row "Harris Berg RW 26 66 58 64 70 71 66" [ref=e252]:
+              - cell "Harris Berg" [ref=e253]:
+                - link "Harris Berg" [ref=e254] [cursor=pointer]:
+                  - /url: /player/skater/18390
+              - cell "RW" [ref=e255]
+              - cell "26" [ref=e256]
+              - cell "66" [ref=e257]:
+                - generic [ref=e258]: "66"
+              - cell "58" [ref=e259]:
+                - generic [ref=e260]: "58"
+              - cell "64" [ref=e261]:
+                - generic [ref=e262]: "64"
+              - cell "70" [ref=e263]:
+                - generic [ref=e264]: "70"
+              - cell "71" [ref=e265]:
+                - generic [ref=e266]: "71"
+              - cell "66" [ref=e267]:
+                - generic [ref=e268]: "66"
+      - generic [ref=e269]:
+        - generic [ref=e270]: Defense · 6
+        - table [ref=e272]:
+          - rowgroup [ref=e273]:
+            - row "Player Pos Age OVR SK SH PS DF PH" [ref=e274]:
+              - columnheader "Player" [ref=e275]
+              - columnheader "Pos" [ref=e276]
+              - columnheader "Age" [ref=e277]
+              - columnheader "OVR" [ref=e278]
+              - columnheader "SK" [ref=e279]
+              - columnheader "SH" [ref=e280]
+              - columnheader "PS" [ref=e281]
+              - columnheader "DF" [ref=e282]
+              - columnheader "PH" [ref=e283]
+          - rowgroup [ref=e284]:
+            - row "Axel Davis LD 29 67 83 54 67 81 51" [ref=e285]:
+              - cell "Axel Davis" [ref=e286]:
+                - link "Axel Davis" [ref=e287] [cursor=pointer]:
+                  - /url: /player/skater/18391
+              - cell "LD" [ref=e288]
+              - cell "29" [ref=e289]
+              - cell "67" [ref=e290]:
+                - generic [ref=e291]: "67"
+              - cell "83" [ref=e292]:
+                - generic [ref=e293]: "83"
+              - cell "54" [ref=e294]:
+                - generic [ref=e295]: "54"
+              - cell "67" [ref=e296]:
+                - generic [ref=e297]: "67"
+              - cell "81" [ref=e298]:
+                - generic [ref=e299]: "81"
+              - cell "51" [ref=e300]:
+                - generic [ref=e301]: "51"
+            - row "Matty Steele LD 29 71 83 69 73 58 75" [ref=e302]:
+              - cell "Matty Steele" [ref=e303]:
+                - link "Matty Steele" [ref=e304] [cursor=pointer]:
+                  - /url: /player/skater/18392
+              - cell "LD" [ref=e305]
+              - cell "29" [ref=e306]
+              - cell "71" [ref=e307]:
+                - generic [ref=e308]: "71"
+              - cell "83" [ref=e309]:
+                - generic [ref=e310]: "83"
+              - cell "69" [ref=e311]:
+                - generic [ref=e312]: "69"
+              - cell "73" [ref=e313]:
+                - generic [ref=e314]: "73"
+              - cell "58" [ref=e315]:
+                - generic [ref=e316]: "58"
+              - cell "75" [ref=e317]:
+                - generic [ref=e318]: "75"
+            - row "Lars Mason LD 25 70 70 72 61 73 74" [ref=e319]:
+              - cell "Lars Mason" [ref=e320]:
+                - link "Lars Mason" [ref=e321] [cursor=pointer]:
+                  - /url: /player/skater/18393
+              - cell "LD" [ref=e322]
+              - cell "25" [ref=e323]
+              - cell "70" [ref=e324]:
+                - generic [ref=e325]: "70"
+              - cell "70" [ref=e326]:
+                - generic [ref=e327]: "70"
+              - cell "72" [ref=e328]:
+                - generic [ref=e329]: "72"
+              - cell "61" [ref=e330]:
+                - generic [ref=e331]: "61"
+              - cell "73" [ref=e332]:
+                - generic [ref=e333]: "73"
+              - cell "74" [ref=e334]:
+                - generic [ref=e335]: "74"
+            - row "Jonah Weiss RD 35 68 58 61 61 82 82" [ref=e336]:
+              - cell "Jonah Weiss" [ref=e337]:
+                - link "Jonah Weiss" [ref=e338] [cursor=pointer]:
+                  - /url: /player/skater/18394
+              - cell "RD" [ref=e339]
+              - cell "35" [ref=e340]
+              - cell "68" [ref=e341]:
+                - generic [ref=e342]: "68"
+              - cell "58" [ref=e343]:
+                - generic [ref=e344]: "58"
+              - cell "61" [ref=e345]:
+                - generic [ref=e346]: "61"
+              - cell "61" [ref=e347]:
+                - generic [ref=e348]: "61"
+              - cell "82" [ref=e349]:
+                - generic [ref=e350]: "82"
+              - cell "82" [ref=e351]:
+                - generic [ref=e352]: "82"
+            - row "Magnus Reid RD 28 68 68 74 53 79 62" [ref=e353]:
+              - cell "Magnus Reid" [ref=e354]:
+                - link "Magnus Reid" [ref=e355] [cursor=pointer]:
+                  - /url: /player/skater/18395
+              - cell "RD" [ref=e356]
+              - cell "28" [ref=e357]
+              - cell "68" [ref=e358]:
+                - generic [ref=e359]: "68"
+              - cell "68" [ref=e360]:
+                - generic [ref=e361]: "68"
+              - cell "74" [ref=e362]:
+                - generic [ref=e363]: "74"
+              - cell "53" [ref=e364]:
+                - generic [ref=e365]: "53"
+              - cell "79" [ref=e366]:
+                - generic [ref=e367]: "79"
+              - cell "62" [ref=e368]:
+                - generic [ref=e369]: "62"
+            - row "Rafe Nash RD 25 65 54 72 59 66 77" [ref=e370]:
+              - cell "Rafe Nash" [ref=e371]:
+                - link "Rafe Nash" [ref=e372] [cursor=pointer]:
+                  - /url: /player/skater/18396
+              - cell "RD" [ref=e373]
+              - cell "25" [ref=e374]
+              - cell "65" [ref=e375]:
+                - generic [ref=e376]: "65"
+              - cell "54" [ref=e377]:
+                - generic [ref=e378]: "54"
+              - cell "72" [ref=e379]:
+                - generic [ref=e380]: "72"
+              - cell "59" [ref=e381]:
+                - generic [ref=e382]: "59"
+              - cell "66" [ref=e383]:
+                - generic [ref=e384]: "66"
+              - cell "77" [ref=e385]:
+                - generic [ref=e386]: "77"
+      - generic [ref=e387]:
+        - generic [ref=e388]: Goaltenders · 2
+        - table [ref=e390]:
+          - rowgroup [ref=e391]:
+            - row "Player Age OVR RX PO RC PH ME" [ref=e392]:
+              - columnheader "Player" [ref=e393]
+              - columnheader "Age" [ref=e394]
+              - columnheader "OVR" [ref=e395]
+              - columnheader "RX" [ref=e396]
+              - columnheader "PO" [ref=e397]
+              - columnheader "RC" [ref=e398]
+              - columnheader "PH" [ref=e399]
+              - columnheader "ME" [ref=e400]
+          - rowgroup [ref=e401]:
+            - row "Zach Jansen 27 73 76 77 66 74 69" [ref=e402]:
+              - cell "Zach Jansen" [ref=e403]:
+                - link "Zach Jansen" [ref=e404] [cursor=pointer]:
+                  - /url: /player/goalie/2043
+              - cell "27" [ref=e405]
+              - cell "73" [ref=e406]:
+                - generic [ref=e407]: "73"
+              - cell "76" [ref=e408]:
+                - generic [ref=e409]: "76"
+              - cell "77" [ref=e410]:
+                - generic [ref=e411]: "77"
+              - cell "66" [ref=e412]:
+                - generic [ref=e413]: "66"
+              - cell "74" [ref=e414]:
+                - generic [ref=e415]: "74"
+              - cell "69" [ref=e416]:
+                - generic [ref=e417]: "69"
+            - row "Marko Tate 34 81 84 91 79 67 68" [ref=e418]:
+              - cell "Marko Tate" [ref=e419]:
+                - link "Marko Tate" [ref=e420] [cursor=pointer]:
+                  - /url: /player/goalie/2044
+              - cell "34" [ref=e421]
+              - cell "81" [ref=e422]:
+                - generic [ref=e423]: "81"
+              - cell "84" [ref=e424]:
+                - generic [ref=e425]: "84"
+              - cell "91" [ref=e426]:
+                - generic [ref=e427]: "91"
+              - cell "79" [ref=e428]:
+                - generic [ref=e429]: "79"
+              - cell "67" [ref=e430]:
+                - generic [ref=e431]: "67"
+              - cell "68" [ref=e432]:
+                - generic [ref=e433]: "68"
+      - generic [ref=e434]:
+        - generic [ref=e435]: Gameplan
+        - generic [ref=e437]:
+          - generic [ref=e438]: offensive
+          - generic [ref=e439]: balanced

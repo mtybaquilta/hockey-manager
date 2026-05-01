@@ -5,6 +5,7 @@ import { Logo } from "../components/Logo";
 import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
+import { useAllGameplans } from "../queries/gameplan";
 import { useGoalieStats, useSkaterStats, useTeamStats } from "../queries/stats";
 import { useTeams } from "../queries/teams";
 
@@ -137,8 +138,12 @@ const GoaliesTab = () => {
 
 const TeamsTab = () => {
   const q = useTeamStats();
+  const gameplans = useAllGameplans();
   const pager = usePager(q.data?.rows ?? []);
   if (!q.data) return <Card>Loading…</Card>;
+  const gpByTeam = new Map(
+    (gameplans.data?.rows ?? []).map((g) => [g.team_id, g]),
+  );
   return (
     <Card>
       <Table>
@@ -160,6 +165,8 @@ const TeamsTab = () => {
             <Th className="num">SH%</Th>
             <Th className="num">PP%</Th>
             <Th className="num">PK%</Th>
+            <Th>Style</Th>
+            <Th>Lines</Th>
           </tr>
         </thead>
         <tbody>
@@ -188,6 +195,12 @@ const TeamsTab = () => {
               <Td className="num">{pct(r.shooting_pct)}</Td>
               <Td className="num">{pct(r.pp_pct)}</Td>
               <Td className="num">{pct(r.pk_pct)}</Td>
+              <Td>
+                <span className="chip">{gpByTeam.get(r.team_id)?.style ?? "—"}</span>
+              </Td>
+              <Td>
+                <span className="chip">{gpByTeam.get(r.team_id)?.line_usage ?? "—"}</span>
+              </Td>
             </tr>
           ))}
         </tbody>
@@ -202,10 +215,16 @@ const TeamCell = ({ teamId, fullName = false }: { teamId: number; fullName?: boo
   const t = teams.data?.find((x) => x.id === teamId);
   if (!t) return <span>—</span>;
   return (
-    <span className="team-row">
-      <Logo teamId={teamId} size={18} />
-      <span className="nm">{fullName ? t.name : t.abbreviation}</span>
-    </span>
+    <Link
+      to="/team/$teamId"
+      params={{ teamId: String(teamId) }}
+      style={{ color: "inherit", textDecoration: "none" }}
+    >
+      <span className="team-row">
+        <Logo teamId={teamId} size={18} />
+        <span className="nm">{fullName ? t.name : t.abbreviation}</span>
+      </span>
+    </Link>
   );
 };
 

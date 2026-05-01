@@ -8,6 +8,12 @@ export const useTeamGameplan = (teamId: number) =>
     queryFn: () => api.get<Gameplan>(`/api/teams/${teamId}/gameplan`),
   });
 
+export const useAllGameplans = () =>
+  useQuery({
+    queryKey: ["gameplans"],
+    queryFn: () => api.get<{ rows: Gameplan[] }>(`/api/gameplans`),
+  });
+
 export const useUpdateTeamGameplan = (teamId: number) => {
   const qc = useQueryClient();
   return useMutation({
@@ -15,6 +21,7 @@ export const useUpdateTeamGameplan = (teamId: number) => {
       api.put<Gameplan>(`/api/teams/${teamId}/gameplan`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["team-gameplan", teamId] });
+      qc.invalidateQueries({ queryKey: ["gameplans"] });
       qc.invalidateQueries({ queryKey: ["schedule"] });
       qc.invalidateQueries({ queryKey: ["standings"] });
     },
