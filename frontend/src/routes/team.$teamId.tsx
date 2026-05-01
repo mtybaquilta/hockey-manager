@@ -1,11 +1,101 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
+import { useState } from "react";
 // Skater/goalie names link to the player detail page.
 import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
+import type { GameplanLineUsage, GameplanStyle } from "../api/types";
+import { useTeamGameplan, useUpdateTeamGameplan } from "../queries/gameplan";
 import { useLeague } from "../queries/league";
 import { useRoster } from "../queries/teams";
+
+const GameplanCard = ({ teamId }: { teamId: number }) => {
+  const q = useTeamGameplan(teamId);
+  const m = useUpdateTeamGameplan(teamId);
+  const [style, setStyle] = useState<GameplanStyle | null>(null);
+  const [lineUsage, setLineUsage] = useState<GameplanLineUsage | null>(null);
+
+  if (!q.data) return null;
+  const gp = q.data;
+  const currentStyle = style ?? gp.style;
+  const currentLine = lineUsage ?? gp.line_usage;
+  const dirty = currentStyle !== gp.style || currentLine !== gp.line_usage;
+
+  if (!gp.editable) {
+    return (
+      <div className="card" style={{ marginTop: 14 }}>
+        <div className="ribbon-h">
+          <span className="accent" />
+          Gameplan
+        </div>
+        <div style={{ padding: "14px 16px", display: "flex", gap: 16 }}>
+          <span className="chip">{gp.style}</span>
+          <span className="chip">{gp.line_usage}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 14 }}>
+      <div className="ribbon-h">
+        <span className="accent" />
+        Gameplan · Applies to future games
+      </div>
+      <div
+        style={{
+          padding: "14px 16px",
+          display: "grid",
+          gap: 10,
+          gridTemplateColumns: "auto 1fr",
+          alignItems: "center",
+        }}
+      >
+        <label>Style</label>
+        <select
+          value={currentStyle}
+          onChange={(e) => setStyle(e.target.value as GameplanStyle)}
+        >
+          {(["balanced", "offensive", "defensive", "physical"] as GameplanStyle[]).map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <label>Line usage</label>
+        <select
+          value={currentLine}
+          onChange={(e) => setLineUsage(e.target.value as GameplanLineUsage)}
+        >
+          {(["balanced", "ride_top_lines", "roll_all_lines"] as GameplanLineUsage[]).map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <div />
+        <button
+          className="btn btn-primary"
+          disabled={!dirty || m.isPending}
+          onClick={() =>
+            m.mutate(
+              { style: currentStyle, line_usage: currentLine },
+              {
+                onSuccess: () => {
+                  setStyle(null);
+                  setLineUsage(null);
+                },
+              },
+            )
+          }
+        >
+          {m.isPending ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const TeamPage = () => {
   const { teamId } = Route.useParams();
@@ -182,6 +272,8 @@ const TeamPage = () => {
         </Table>
         <Pagination {...gPager} onPage={gPager.setPage} />
       </div>
+
+      <GameplanCard teamId={id} />
     </Shell>
   );
 };
