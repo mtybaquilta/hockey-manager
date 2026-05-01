@@ -139,6 +139,17 @@ def _on_ice_with_schedule(
     return team.forward_lines[fwd_sched[ft]], team.defense_pairs[def_sched[dt]]
 
 
+def _shooter_weight(s) -> float:
+    """Selection weight for who takes a shot from the on-ice attackers.
+
+    Linear in `shooting` is too top-heavy: a 90-rated forward on a line of
+    70-rated linemates ends up with ~600 shots over an 82-game sample. We
+    flatten with a large baseline so elite shooters still lead, but a star
+    on line 1 + PP doesn't dominate the team's shot diet.
+    """
+    return 100.0 + s.shooting
+
+
 def _pick_weighted(rng: random.Random, items: list, weights: list[float]):
     total = sum(weights)
     r = rng.random() * total
@@ -232,7 +243,7 @@ def _attempt_shot(
     if rng.random() > shot_prob:
         return (None, None, [], 0, None)
 
-    shooter = _pick_weighted(rng, attackers, [s.shooting for s in attackers])
+    shooter = _pick_weighted(rng, attackers, [_shooter_weight(s) for s in attackers])
     quality = _classify_shot_quality(rng, off, defender_def, strength, attacker_gp, defender_gp)
     save_prob = _save_probability(goalie_save_rating(defender_goalie) + goalie_form, shooter.shooting)
     save_prob *= SAVE_MULT_BY_QUALITY[quality]

@@ -16,7 +16,7 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 - Staff hiring
 - Player morale
 - Line chemistry
-- Advanced tactics
+- Advanced tactics (basic Gameplan style + line_usage is **implemented** — see `docs/phase-2.md`. Deferred items are matchup-based tactics, situational systems, dedicated tactics UI beyond what ships now.)
 - Training systems
 - Long-term player development
 - Injuries

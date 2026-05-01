@@ -62,6 +62,7 @@ The user should be able to play through a short season from start to finish.
 - Basic lineup editing
 - Enough validation to prevent obviously invalid lineups
 - No advanced chemistry or tactical roles yet
+- Per-team Gameplan (`style` + `line_usage`) is implemented in the sim and influences shots, goals, penalties, and line TOI. PP/PK units are auto-selected from the lineup. See `docs/phase-2.md`.
 
 ### Schedule
 
@@ -132,7 +133,7 @@ Do not implement these during the first playable milestone unless explicitly req
 - Staff
 - Player morale
 - Line chemistry
-- Advanced tactics
+- Advanced tactics (basic Gameplan style/line_usage is implemented; "advanced" here means matchup tactics, situational systems, etc.)
 - Training systems
 - Long-term player development
 - Injuries
