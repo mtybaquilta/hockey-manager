@@ -179,4 +179,13 @@ export interface GoalieCareer {
   player_id: number; name: string; by_season: GoalieSeasonStats[]; totals: GoalieSeasonStats;
 }
 
+export type GameplanStyle = "balanced" | "offensive" | "defensive" | "physical";
+export type GameplanLineUsage = "balanced" | "ride_top_lines" | "roll_all_lines";
+export interface Gameplan {
+  team_id: number;
+  style: GameplanStyle;
+  line_usage: GameplanLineUsage;
+  editable: boolean;
+}
+
 export interface ApiError { error_code: string; message: string; }
