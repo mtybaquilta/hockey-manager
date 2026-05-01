@@ -54,11 +54,25 @@ def _build_goalie(rng: random.Random, goalie_id: int) -> SimGoalie:
     )
 
 
+def _overall(s: SimSkater) -> int:
+    return s.skating + s.shooting + s.passing + s.defense + s.physical
+
+
 def procedural_team(rng: random.Random, id_base: int) -> SimTeamLineup:
+    """Build a synthetic team whose lines mirror the real lineup builder.
+
+    `app/services/generation/lineups.py` sorts each position by overall
+    (skating+shooting+passing+defense+physical) and assigns the best LW/C/RW
+    to line 1, second-best to line 2, etc. The report's synthetic team must
+    do the same; otherwise top-scorer concentration is wildly under-reported
+    because line 1 ends up no better than line 4.
+    """
     skaters = [_build_skater(rng, id_base + i, pos) for i, pos in enumerate(SKATER_LAYOUT)]
     by_pos: dict[Position, list[SimSkater]] = {p: [] for p in Position}
     for s in skaters:
         by_pos[s.position].append(s)
+    for p in by_pos:
+        by_pos[p].sort(key=lambda s: -_overall(s))
 
     forward_lines = tuple(
         SimLine(skaters=(by_pos[Position.LW][i], by_pos[Position.C][i], by_pos[Position.RW][i]))
