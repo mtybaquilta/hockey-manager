@@ -26,8 +26,12 @@ from dataclasses import dataclass
 import random
 
 from sim.engine import simulate_game
-from sim.models import EventKind, ResultType, ShotQuality, SimGameInput, Strength
+from sim.models import EventKind, ResultType, ShotQuality, SimGameInput, SimGameplan, SimTeamInput, Strength
 from sim.tools._synthetic_team import procedural_team
+
+
+def _wrap(lineup) -> SimTeamInput:
+    return SimTeamInput(lineup=lineup, gameplan=SimGameplan(style="balanced", line_usage="balanced"))
 
 
 @dataclass
@@ -57,7 +61,7 @@ def _measure(games: int, base_seed: int, team_count: int) -> list[GameSample]:
             home, away = pair_rng.sample(teams, 2)
         else:
             home = away = teams[0]
-        r = simulate_game(SimGameInput(home=home, away=away, seed=base_seed + i))
+        r = simulate_game(SimGameInput(home=_wrap(home), away=_wrap(away), seed=base_seed + i))
         quality_overall: Counter = Counter()
         quality_by_strength: dict[Strength, Counter] = {s: Counter() for s in Strength}
         penalties = pp_goals = sh_goals = 0

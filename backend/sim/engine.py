@@ -48,9 +48,12 @@ from sim.special_teams import (
     select_special_teams,
 )
 
-OT_MAX_TICKS = 15
+OT_MAX_TICKS = 25
 PENALTY_DURATION_TICKS = 4
 PENALTY_PER_TICK_PROB = 0.018
+
+# Tiny home-ice possession edge applied to attacker selection.
+HOME_POSSESSION_BIAS = 1.04
 
 # Strength multipliers applied to base shot probability.
 SHOT_PROB_PP = 1.7
@@ -406,7 +409,7 @@ def _simulate_phase(
         a_fwd_idx = away_fwd_sched[t % len(away_fwd_sched)]
         h_fwd = home.lineup.forward_lines[h_fwd_idx]
         a_fwd = away.lineup.forward_lines[a_fwd_idx]
-        h_weight = sum(s.skating for s in h_fwd.skaters)
+        h_weight = sum(s.skating for s in h_fwd.skaters) * HOME_POSSESSION_BIAS
         a_weight = sum(s.skating for s in a_fwd.skaters)
         if home_box.shorthanded() and not away_box.shorthanded():
             a_weight *= 1.5
