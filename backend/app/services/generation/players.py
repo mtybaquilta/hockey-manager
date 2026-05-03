@@ -51,11 +51,11 @@ def _potential_for(rng: random.Random, age: int, overall: int) -> int:
     return max(overall, min(100, overall + bump))
 
 
-def _skater_overall(skating: int, shooting: int, passing: int, defense: int, physical: int) -> int:
+def skater_overall(skating: int, shooting: int, passing: int, defense: int, physical: int) -> int:
     return round((skating + shooting + passing + defense + physical) / 5)
 
 
-def _goalie_overall(reflexes: int, positioning: int, rebound_control: int, puck_handling: int, mental: int) -> int:
+def goalie_overall(reflexes: int, positioning: int, rebound_control: int, puck_handling: int, mental: int) -> int:
     return round((reflexes + positioning + rebound_control + puck_handling + mental) / 5)
 
 
@@ -67,7 +67,7 @@ def generate_players_for_team(rng: random.Random, db: Session, team_id: int, use
         defense = _attr(rng) if pos in ("LD", "RD") else max(40, _attr(rng) - 5)
         physical = _attr(rng)
         age = rng.randint(19, 35)
-        overall = _skater_overall(skating, shooting, passing, defense, physical)
+        overall = skater_overall(skating, shooting, passing, defense, physical)
         db.add(
             Skater(
                 team_id=team_id,
@@ -90,7 +90,7 @@ def generate_players_for_team(rng: random.Random, db: Session, team_id: int, use
         puck_handling = _goalie_attr(rng)
         mental = _goalie_attr(rng)
         age = rng.randint(20, 36)
-        overall = _goalie_overall(reflexes, positioning, rebound_control, puck_handling, mental)
+        overall = goalie_overall(reflexes, positioning, rebound_control, puck_handling, mental)
         db.add(
             Goalie(
                 team_id=team_id,
