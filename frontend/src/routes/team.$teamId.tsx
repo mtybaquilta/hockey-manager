@@ -154,10 +154,12 @@ const TeamPage = () => {
         </Td>
         <Td style={{ color: "var(--ink-3)" }}>{p.position}</Td>
         <Td className="num">{p.age}</Td>
-        <Td className="num">
-          <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
-          {p.potential > ovr && <span className="pot-arrow">→</span>}
-          <span className={`chip ${attrClass(p.potential)}`}>{p.potential}</span>
+        <Td>
+          <span className="ovr-pot">
+            <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
+            <span className="pot-arrow">{p.potential > ovr ? "→" : "·"}</span>
+            <span className={`chip ${attrClass(p.potential)}`}>{p.potential}</span>
+          </span>
         </Td>
         <Td>
           <span className={`tag ${tagClass(tag)}`}>{tag}</span>
@@ -221,7 +223,7 @@ const TeamPage = () => {
               <Th>Player</Th>
               <Th>Pos</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR · POT</Th>
+              <Th>OVR · POT</Th>
               <Th>Role</Th>
               <Th className="num">SK</Th>
               <Th className="num">SH</Th>
@@ -247,7 +249,7 @@ const TeamPage = () => {
               <Th>Player</Th>
               <Th>Pos</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR · POT</Th>
+              <Th>OVR · POT</Th>
               <Th>Role</Th>
               <Th className="num">SK</Th>
               <Th className="num">SH</Th>
@@ -271,8 +273,9 @@ const TeamPage = () => {
           <thead>
             <tr>
               <Th>Player</Th>
+              <Th>Pos</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR · POT</Th>
+              <Th>OVR · POT</Th>
               <Th>Role</Th>
               <Th className="num">RX</Th>
               <Th className="num">PO</Th>
@@ -293,11 +296,14 @@ const TeamPage = () => {
                       {g.name}
                     </Link>
                   </Td>
+                  <Td style={{ color: "var(--ink-3)" }}>G</Td>
                   <Td className="num">{g.age}</Td>
-                  <Td className="num">
-                    <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
-                    {g.potential > ovr && <span className="pot-arrow">→</span>}
-                    <span className={`chip ${attrClass(g.potential)}`}>{g.potential}</span>
+                  <Td>
+                    <span className="ovr-pot">
+                      <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
+                      <span className="pot-arrow">{g.potential > ovr ? "→" : "·"}</span>
+                      <span className={`chip ${attrClass(g.potential)}`}>{g.potential}</span>
+                    </span>
                   </Td>
                   <Td>
                     <span className={`tag ${tagClass(tag)}`}>{tag}</span>

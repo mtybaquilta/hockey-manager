@@ -334,7 +334,8 @@ body {
 }
 .chip.ovr.hi { background: #1B6F43; }
 .chip.ovr.lo { background: #A1192A; }
-.pot-arrow { color: var(--ink-3); margin: 0 4px; font-size: 11px; }
+.ovr-pot { display: inline-flex; align-items: center; gap: 6px; }
+.pot-arrow { color: var(--ink-3); font-size: 11px; width: 10px; text-align: center; }
 
 /* roster tag pills */
 .tag {
