@@ -105,6 +105,15 @@ Track basic standings:
 - Released players return to the pool. Lineup slots referencing them are cleared automatically; stats are preserved.
 - Implementation: `team_id` is nullable on `skater` and `goalie`; `team_id IS NULL` ⇔ free agent.
 
+### Trades (P1.2)
+
+- Computed trade block per AI team (1–3 candidates each), excluding top-3 forwards / top-2 D / #1 goalie.
+- `/trade-block` page lists candidates with team, name, age, OVR, asking value, reason.
+- User team can propose 1-for-1 same-type trades (skater↔skater, goalie↔goalie).
+- Backend evaluates deterministically: `value = ovr + age_modifier + position_need_modifier`. Accept iff offered value ≥ target value.
+- Accepted trade swaps `team_id` in one transaction. Lineup slots referencing either traded player are cleared automatically (mirrors the release flow).
+- Out of scope: multi-player trades, draft picks, salary cap, contracts, NTC, AI↔AI trades, history page, deadline, negotiation.
+
 ### UI
 
 Minimum useful screens:

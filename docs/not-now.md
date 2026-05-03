@@ -6,7 +6,7 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 
 ## Deferred Gameplay Systems
 
-- Trades
+- Trades (P1.2 implemented — basic 1-for-1 user-team trade block + propose. Deferred: multi-player, picks, contracts, salary cap, NTC, AI↔AI, history page, deadline, negotiation loop.)
 - Draft
 - Salary cap
 - Complex contracts

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TradeBlockRouteImport } from './routes/trade-block'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StandingsRouteImport } from './routes/standings'
 import { Route as SeasonCompleteRouteImport } from './routes/season-complete'
@@ -22,6 +23,11 @@ import { Route as TeamTeamIdLineupRouteImport } from './routes/team.$teamId.line
 import { Route as PlayerSkaterIdRouteImport } from './routes/player.skater.$id'
 import { Route as PlayerGoalieIdRouteImport } from './routes/player.goalie.$id'
 
+const TradeBlockRoute = TradeBlockRouteImport.update({
+  id: '/trade-block',
+  path: '/trade-block',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
+  '/trade-block': typeof TradeBlockRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
+  '/trade-block': typeof TradeBlockRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
+  '/trade-block': typeof TradeBlockRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
+    | '/trade-block'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
+    | '/trade-block'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
+    | '/trade-block'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   SeasonCompleteRoute: typeof SeasonCompleteRoute
   StandingsRoute: typeof StandingsRoute
   StatsRoute: typeof StatsRoute
+  TradeBlockRoute: typeof TradeBlockRoute
   GameGameIdRoute: typeof GameGameIdRoute
   TeamTeamIdRoute: typeof TeamTeamIdRouteWithChildren
   PlayerGoalieIdRoute: typeof PlayerGoalieIdRoute
@@ -187,6 +200,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/trade-block': {
+      id: '/trade-block'
+      path: '/trade-block'
+      fullPath: '/trade-block'
+      preLoaderRoute: typeof TradeBlockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stats': {
       id: '/stats'
       path: '/stats'
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonCompleteRoute: SeasonCompleteRoute,
   StandingsRoute: StandingsRoute,
   StatsRoute: StatsRoute,
+  TradeBlockRoute: TradeBlockRoute,
   GameGameIdRoute: GameGameIdRoute,
   TeamTeamIdRoute: TeamTeamIdRouteWithChildren,
   PlayerGoalieIdRoute: PlayerGoalieIdRoute,
