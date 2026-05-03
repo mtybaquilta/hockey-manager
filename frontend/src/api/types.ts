@@ -17,14 +17,14 @@ export interface Goalie {
 }
 export interface Roster { team: TeamSummary; skaters: Skater[]; goalies: Goalie[]; }
 export interface LineupSlots {
-  line1_lw_id: number; line1_c_id: number; line1_rw_id: number;
-  line2_lw_id: number; line2_c_id: number; line2_rw_id: number;
-  line3_lw_id: number; line3_c_id: number; line3_rw_id: number;
-  line4_lw_id: number; line4_c_id: number; line4_rw_id: number;
-  pair1_ld_id: number; pair1_rd_id: number;
-  pair2_ld_id: number; pair2_rd_id: number;
-  pair3_ld_id: number; pair3_rd_id: number;
-  starting_goalie_id: number; backup_goalie_id: number;
+  line1_lw_id: number | null; line1_c_id: number | null; line1_rw_id: number | null;
+  line2_lw_id: number | null; line2_c_id: number | null; line2_rw_id: number | null;
+  line3_lw_id: number | null; line3_c_id: number | null; line3_rw_id: number | null;
+  line4_lw_id: number | null; line4_c_id: number | null; line4_rw_id: number | null;
+  pair1_ld_id: number | null; pair1_rd_id: number | null;
+  pair2_ld_id: number | null; pair2_rd_id: number | null;
+  pair3_ld_id: number | null; pair3_rd_id: number | null;
+  starting_goalie_id: number | null; backup_goalie_id: number | null;
 }
 export interface Lineup extends LineupSlots { team_id: number; }
 export interface GameSummary {
@@ -189,3 +189,24 @@ export interface Gameplan {
 }
 
 export interface ApiError { error_code: string; message: string; }
+
+export interface FreeAgentSkater {
+  id: number; name: string; age: number; position: Position;
+  potential: number; development_type: string;
+  skating: number; shooting: number; passing: number; defense: number; physical: number;
+  ovr: number;
+}
+export interface FreeAgentGoalie {
+  id: number; name: string; age: number;
+  potential: number; development_type: string;
+  reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number;
+  ovr: number;
+}
+export interface FreeAgentFilters {
+  position?: Position;
+  min_ovr?: number;
+  min_potential?: number;
+  max_age?: number;
+  sort?: "ovr" | "potential" | "age" | "position";
+  order?: "asc" | "desc";
+}
