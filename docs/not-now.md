@@ -11,7 +11,7 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 - Salary cap
 - Complex contracts
 - Waivers
-- Free agency
+- Free agency (P1.1 implemented — basic FA pool + sign/release. Deferred: contracts, salary cap, AI signings, transfer windows.)
 - Scouting
 - Staff hiring
 - Player morale
