@@ -145,11 +145,11 @@ def _shooter_weight(s) -> float:
     """Selection weight for who takes a shot from the on-ice attackers.
 
     Linear in `shooting` is too top-heavy: a 90-rated forward on a line of
-    70-rated linemates ends up with ~600 shots over an 82-game sample. We
-    flatten with a large baseline so elite shooters still lead, but a star
-    on line 1 + PP doesn't dominate the team's shot diet.
+    70-rated linemates would end up with 450+ shots over an 82-game sample.
+    We flatten with a large baseline so elite shooters still lead, but a
+    star on line 1 + PP doesn't dominate the team's shot diet.
     """
-    return 100.0 + s.shooting
+    return 220.0 + s.shooting
 
 
 def _pick_weighted(rng: random.Random, items: list, weights: list[float]):

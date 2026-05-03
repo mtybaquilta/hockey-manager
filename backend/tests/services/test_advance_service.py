@@ -3,13 +3,13 @@ import pytest
 from app.errors import SeasonAlreadyComplete
 from app.models import Game, Season, Standing
 from app.services.advance_service import advance_matchday
-from app.services.generation.schedule import GAMES_PER_PAIRING
+from app.services.generation.schedule import GAMES_PER_TEAM
 from app.services.generation.teams import TEAM_COUNT
 from app.services.league_service import create_or_reset_league
 
-MATCHDAYS = (TEAM_COUNT - 1) * GAMES_PER_PAIRING
+MATCHDAYS = GAMES_PER_TEAM
 GAMES_PER_MATCHDAY = TEAM_COUNT // 2
-TOTAL_GAMES = TEAM_COUNT * (TEAM_COUNT - 1) // 2 * GAMES_PER_PAIRING
+TOTAL_GAMES = TEAM_COUNT * GAMES_PER_TEAM // 2
 
 
 def test_advance_one_matchday(db):

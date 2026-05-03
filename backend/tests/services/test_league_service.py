@@ -2,11 +2,11 @@ import pytest
 
 from app.errors import LeagueNotFound, TeamNotFound
 from app.models import Game, Standing, Team
-from app.services.generation.schedule import GAMES_PER_PAIRING
+from app.services.generation.schedule import GAMES_PER_TEAM
 from app.services.generation.teams import TEAM_COUNT
 from app.services.league_service import create_or_reset_league, get_league, set_user_team
 
-EXPECTED_GAMES = TEAM_COUNT * (TEAM_COUNT - 1) // 2 * GAMES_PER_PAIRING
+EXPECTED_GAMES = TEAM_COUNT * GAMES_PER_TEAM // 2
 
 
 def test_create_league_full_setup(db):

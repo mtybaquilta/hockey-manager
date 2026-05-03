@@ -2,10 +2,9 @@ from fastapi.testclient import TestClient
 
 from app.db import get_db
 from app.main import app
-from app.services.generation.schedule import GAMES_PER_PAIRING
-from app.services.generation.teams import TEAM_COUNT
+from app.services.generation.schedule import GAMES_PER_TEAM
 
-EXPECTED_MATCHDAYS = (TEAM_COUNT - 1) * GAMES_PER_PAIRING
+EXPECTED_MATCHDAYS = GAMES_PER_TEAM
 
 
 def test_stats_and_player_detail(db):
