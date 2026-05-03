@@ -18,6 +18,7 @@ from app.models import (
     TeamGameplan,
 )
 from app.services.gameplan_service import generate_gameplans_for_league
+from app.services.generation.free_agents import generate_free_agent_pool
 from app.services.generation.lineups import generate_default_lineups
 from app.services.generation.schedule import generate_schedule
 from app.services.generation.teams import generate_teams
@@ -48,6 +49,10 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
     db.flush()
     rng = random.Random(seed_val)
     teams = generate_teams(rng, db)
+    used_names: set[str] = {p.name for p in db.query(Skater).all()}
+    used_names |= {g.name for g in db.query(Goalie).all()}
+    generate_free_agent_pool(rng, db, used_names)
+    db.flush()
     generate_default_lineups(db, [t.id for t in teams])
     generate_schedule(rng, db, season.id, [t.id for t in teams])
     for t in teams:
