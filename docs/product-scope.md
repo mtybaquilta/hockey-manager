@@ -97,6 +97,14 @@ Track basic standings:
 - goals for
 - goals against
 
+### Free Agents (P1.1)
+
+- Seeded pool of unsigned skaters and goalies generated at league creation.
+- `/free-agents` page with filter by position/min OVR/min potential/max age and sort.
+- The user team can sign free agents and release rostered players. Sign is instant; release confirms via modal.
+- Released players return to the pool. Lineup slots referencing them are cleared automatically; stats are preserved.
+- Implementation: `team_id` is nullable on `skater` and `goalie`; `team_id IS NULL` ⇔ free agent.
+
 ### UI
 
 Minimum useful screens:
@@ -128,7 +136,7 @@ Do not implement these during the first playable milestone unless explicitly req
 - Salary cap
 - Complex contracts
 - Waivers
-- Free agency
+- Free agency (P1.1 implemented — basic FA pool + sign/release; deeper systems still deferred)
 - Scouting
 - Staff
 - Player morale
