@@ -68,6 +68,12 @@ def _measure(games: int, base_seed: int, team_count: int):
     assists: Counter[int] = Counter()
     shots: Counter[int] = Counter()
     line_points_by_idx: list[int] = [0, 0, 0, 0]
+    # forward skater_id -> team index (D excluded so per-team top-forward is unambiguous)
+    forward_team: dict[int, int] = {}
+    for ti, lineup in enumerate(teams):
+        for line in lineup.forward_lines:
+            for s in line.skaters:
+                forward_team[s.id] = ti
 
     # skater_id -> team index, for team-shot-share lookups.
     team_of_skater: dict[int, int] = {}
@@ -125,6 +131,7 @@ def _measure(games: int, base_seed: int, team_count: int):
         "team_skater_shots_against": team_skater_shots_against,
         "team_engine_shots_for": team_engine_shots_for,
         "team_engine_shots_against": team_engine_shots_against,
+        "forward_team": forward_team,
     }
 
 
@@ -176,6 +183,42 @@ def _print_report(data: dict, games: int) -> None:
         )
         print(f"  top scorer shots per team game: {per_game:.2f}")
         print(f"  top scorer share of team-only shots: {team_share:.1%}  ({sh}/{team_sh})")
+
+    # Per-team forward concentration: top-1 and top-3 forward share of team points.
+    forward_team: dict[int, int] = data["forward_team"]
+    team_count = len(teams)
+    fwd_pts_by_team: list[list[int]] = [[] for _ in range(team_count)]
+    team_total_pts: list[int] = [0] * team_count
+    for sid, pts in points.items():
+        ti = forward_team.get(sid)
+        if ti is not None:
+            fwd_pts_by_team[ti].append(pts)
+        # All players (F + D) count toward team-points denominator.
+        # Map any skater to their team via team_of_skater (already provided).
+        own = team_of_skater.get(sid)
+        if own is not None:
+            team_total_pts[own] += pts
+    top1_shares: list[float] = []
+    top3_shares: list[float] = []
+    for ti in range(team_count):
+        sorted_fwd = sorted(fwd_pts_by_team[ti], reverse=True)
+        denom = team_total_pts[ti]
+        if not denom or not sorted_fwd:
+            continue
+        top1_shares.append(sorted_fwd[0] / denom)
+        top3_shares.append(sum(sorted_fwd[:3]) / denom)
+    if top1_shares:
+        print("\nPer-team forward concentration (forwards / team points)")
+        print(
+            f"  top forward          mean={statistics.mean(top1_shares):.1%}  "
+            f"median={statistics.median(top1_shares):.1%}  "
+            f"min={min(top1_shares):.1%}  max={max(top1_shares):.1%}"
+        )
+        print(
+            f"  top 3 forwards       mean={statistics.mean(top3_shares):.1%}  "
+            f"median={statistics.median(top3_shares):.1%}  "
+            f"min={min(top3_shares):.1%}  max={max(top3_shares):.1%}"
+        )
 
     # Forward line point share (line1..line4).
     print("\nForward line point share (forwards only)")

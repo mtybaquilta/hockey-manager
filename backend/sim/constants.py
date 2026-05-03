@@ -26,9 +26,9 @@ GAMEPLAN_STYLE_MODIFIERS: dict[str, dict[str, float]] = {
 }
 
 LINE_USAGE_FORWARD_DISTRIBUTION: dict[str, tuple[float, ...]] = {
-    "balanced":       (0.37, 0.29, 0.22, 0.12),
-    "ride_top_lines": (0.41, 0.30, 0.19, 0.10),
-    "roll_all_lines": (0.31, 0.27, 0.23, 0.19),
+    "balanced":       (0.30, 0.28, 0.23, 0.19),
+    "ride_top_lines": (0.38, 0.29, 0.21, 0.12),
+    "roll_all_lines": (0.29, 0.27, 0.23, 0.21),
 }
 LINE_USAGE_DEFENSE_DISTRIBUTION: dict[str, tuple[float, ...]] = {
     "balanced":       (0.42, 0.34, 0.24),
