@@ -9,8 +9,8 @@ GAMEPLAN_STYLE_MODIFIERS: dict[str, dict[str, float]] = {
         "self_penalty": 1.00, "opp_penalty": 1.00,
     },
     "offensive": {
-        "shot_prob": 1.04, "opp_shot_prob": 1.00, "def_suppression": 0.98,
-        "shot_quality_self": 0.03, "shot_quality_opp": 0.00,
+        "shot_prob": 1.02, "opp_shot_prob": 1.01, "def_suppression": 0.99,
+        "shot_quality_self": 0.02, "shot_quality_opp": 0.01,
         "self_penalty": 1.00, "opp_penalty": 1.00,
     },
     "defensive": {
@@ -26,14 +26,14 @@ GAMEPLAN_STYLE_MODIFIERS: dict[str, dict[str, float]] = {
 }
 
 LINE_USAGE_FORWARD_DISTRIBUTION: dict[str, tuple[float, ...]] = {
-    "balanced":       (0.40, 0.30, 0.20, 0.10),
-    "ride_top_lines": (0.44, 0.31, 0.17, 0.08),
-    "roll_all_lines": (0.30, 0.27, 0.23, 0.20),
+    "balanced":       (0.37, 0.29, 0.22, 0.12),
+    "ride_top_lines": (0.41, 0.30, 0.19, 0.10),
+    "roll_all_lines": (0.31, 0.27, 0.23, 0.19),
 }
 LINE_USAGE_DEFENSE_DISTRIBUTION: dict[str, tuple[float, ...]] = {
-    "balanced":       (0.45, 0.35, 0.20),
-    "ride_top_lines": (0.49, 0.35, 0.16),
-    "roll_all_lines": (0.38, 0.34, 0.28),
+    "balanced":       (0.42, 0.34, 0.24),
+    "ride_top_lines": (0.46, 0.34, 0.20),
+    "roll_all_lines": (0.37, 0.34, 0.29),
 }
 
 # Floor used after style shifts, so a quality bucket weight never goes
