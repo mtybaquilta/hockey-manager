@@ -13,6 +13,7 @@ from app.api import (
     standings,
     stats,
     teams,
+    trades,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -30,5 +31,6 @@ for r in (
     gameplan.router,
     gameplan.list_router,
     free_agents.router,
+    trades.router,
 ):
     api_router.include_router(r)

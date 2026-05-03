@@ -210,3 +210,36 @@ export interface FreeAgentFilters {
   sort?: "ovr" | "potential" | "age" | "position";
   order?: "asc" | "desc";
 }
+
+export type PlayerKind = "skater" | "goalie";
+
+export interface TradeBlockEntry {
+  player_type: PlayerKind;
+  player_id: number;
+  team_id: number;
+  team_name: string;
+  team_abbreviation: string;
+  name: string;
+  age: number;
+  position: string | null;
+  ovr: number;
+  asking_value: number;
+  reason: string;
+}
+
+export interface TradeProposalRequest {
+  target_player_type: PlayerKind;
+  target_player_id: number;
+  offered_player_type: PlayerKind;
+  offered_player_id: number;
+}
+
+export interface TradeProposalResponse {
+  accepted: boolean;
+  message: string;
+  error_code?: string | null;
+  acquired_player_id?: number | null;
+  acquired_player_type?: PlayerKind | null;
+  traded_away_player_id?: number | null;
+  traded_away_player_type?: PlayerKind | null;
+}
