@@ -13,7 +13,7 @@ from app.services.league_service import get_league
 class SkaterStatRow(BaseModel):
     skater_id: int
     name: str
-    team_id: int
+    team_id: int | None
     position: str
     games_played: int
     goals: int
@@ -26,7 +26,7 @@ class SkaterStatRow(BaseModel):
 class GoalieStatRow(BaseModel):
     goalie_id: int
     name: str
-    team_id: int
+    team_id: int | None
     games_played: int
     shots_against: int
     saves: int
