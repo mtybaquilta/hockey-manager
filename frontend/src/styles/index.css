@@ -326,3 +326,25 @@ body {
 }
 .chip.hi { background: rgba(42,157,95,.18); color: #1B6F43; }
 .chip.lo { background: rgba(215,38,61,.14); color: #A1192A; }
+
+/* OVR — dominant chip */
+.chip.ovr {
+  min-width: 36px; padding: 4px 8px; font-size: 13px; border-radius: 3px;
+  background: var(--navy-900); color: #fff;
+}
+.chip.ovr.hi { background: #1B6F43; }
+.chip.ovr.lo { background: #A1192A; }
+.pot-arrow { color: var(--ink-3); margin: 0 4px; font-size: 11px; }
+
+/* roster tag pills */
+.tag {
+  display: inline-block; padding: 2px 7px; border-radius: 999px;
+  font: 700 10px/1.4 'Roboto Condensed'; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--bone); color: var(--ink-2);
+}
+.tag-star { background: #C8A24B; color: #2B1F00; }
+.tag-top { background: rgba(30,58,138,.14); color: #1E3A8A; }
+.tag-prospect { background: rgba(42,157,95,.18); color: #1B6F43; }
+.tag-aging { background: rgba(215,38,61,.12); color: #A1192A; }
+.tag-backup { background: rgba(55,71,79,.12); color: #37474F; }
+.tag-depth { background: var(--bone); color: var(--ink-3); }

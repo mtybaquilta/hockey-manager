@@ -6,6 +6,13 @@ import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
+import {
+  computeGoalieTags,
+  computeSkaterTags,
+  goalieOvr as computeGoalieOvr,
+  skaterOvr,
+  tagClass,
+} from "../lib/roster-tags";
 import type { GameplanLineUsage, GameplanStyle } from "../api/types";
 import { useReleaseGoalie, useReleaseSkater } from "../queries/free-agents";
 import { useTeamGameplan, useUpdateTeamGameplan } from "../queries/gameplan";
@@ -106,9 +113,13 @@ const TeamPage = () => {
   const league = useLeague();
   const matchRoute = useMatchRoute();
   const isChild = matchRoute({ to: "/team/$teamId/lineup", params: { teamId } });
-  const F = roster.data?.skaters.filter((s) => s.position !== "LD" && s.position !== "RD") ?? [];
-  const D = roster.data?.skaters.filter((s) => s.position === "LD" || s.position === "RD") ?? [];
-  const G = roster.data?.goalies ?? [];
+  const allSkaters = roster.data?.skaters ?? [];
+  const skaterTags = computeSkaterTags(allSkaters);
+  const goalieTags = computeGoalieTags(roster.data?.goalies ?? []);
+  const byOvrDesc = (a: typeof allSkaters[number], b: typeof allSkaters[number]) => skaterOvr(b) - skaterOvr(a);
+  const F = allSkaters.filter((s) => s.position !== "LD" && s.position !== "RD").sort(byOvrDesc);
+  const D = allSkaters.filter((s) => s.position === "LD" || s.position === "RD").sort(byOvrDesc);
+  const G = [...(roster.data?.goalies ?? [])].sort((a, b) => computeGoalieOvr(b) - computeGoalieOvr(a));
   const fPager = usePager(F);
   const dPager = usePager(D);
   const gPager = usePager(G);
@@ -132,7 +143,8 @@ const TeamPage = () => {
   };
 
   const SkaterRow = ({ p }: { p: (typeof F)[number] }) => {
-    const ovr = Math.round(0.25 * p.shooting + 0.2 * p.passing + 0.2 * p.skating + 0.2 * p.defense + 0.15 * p.physical);
+    const ovr = skaterOvr(p);
+    const tag = skaterTags.get(p.id)!;
     return (
       <tr>
         <Td>
@@ -143,7 +155,12 @@ const TeamPage = () => {
         <Td style={{ color: "var(--ink-3)" }}>{p.position}</Td>
         <Td className="num">{p.age}</Td>
         <Td className="num">
-          <span className={`chip ${attrClass(ovr)}`}>{ovr}</span>
+          <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
+          {p.potential > ovr && <span className="pot-arrow">→</span>}
+          <span className={`chip ${attrClass(p.potential)}`}>{p.potential}</span>
+        </Td>
+        <Td>
+          <span className={`tag ${tagClass(tag)}`}>{tag}</span>
         </Td>
         <Td className="num">
           <span className={`chip ${attrClass(p.skating)}`}>{p.skating}</span>
@@ -175,9 +192,6 @@ const TeamPage = () => {
     );
   };
 
-  const goalieOvr = (g: (typeof G)[number]) =>
-    Math.round(0.3 * g.reflexes + 0.25 * g.positioning + 0.2 * g.rebound_control + 0.15 * g.puck_handling + 0.1 * g.mental);
-
   return (
     <Shell
       crumbs={["Continental Hockey League", "My Team"]}
@@ -207,7 +221,8 @@ const TeamPage = () => {
               <Th>Player</Th>
               <Th>Pos</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR</Th>
+              <Th className="num">OVR · POT</Th>
+              <Th>Role</Th>
               <Th className="num">SK</Th>
               <Th className="num">SH</Th>
               <Th className="num">PS</Th>
@@ -232,7 +247,8 @@ const TeamPage = () => {
               <Th>Player</Th>
               <Th>Pos</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR</Th>
+              <Th className="num">OVR · POT</Th>
+              <Th>Role</Th>
               <Th className="num">SK</Th>
               <Th className="num">SH</Th>
               <Th className="num">PS</Th>
@@ -256,7 +272,8 @@ const TeamPage = () => {
             <tr>
               <Th>Player</Th>
               <Th className="num">Age</Th>
-              <Th className="num">OVR</Th>
+              <Th className="num">OVR · POT</Th>
+              <Th>Role</Th>
               <Th className="num">RX</Th>
               <Th className="num">PO</Th>
               <Th className="num">RC</Th>
@@ -267,7 +284,8 @@ const TeamPage = () => {
           </thead>
           <tbody>
             {gPager.slice.map((g) => {
-              const ovr = goalieOvr(g);
+              const ovr = computeGoalieOvr(g);
+              const tag = goalieTags.get(g.id)!;
               return (
                 <tr key={g.id}>
                   <Td>
@@ -277,7 +295,12 @@ const TeamPage = () => {
                   </Td>
                   <Td className="num">{g.age}</Td>
                   <Td className="num">
-                    <span className={`chip ${attrClass(ovr)}`}>{ovr}</span>
+                    <span className={`chip ovr ${attrClass(ovr)}`}>{ovr}</span>
+                    {g.potential > ovr && <span className="pot-arrow">→</span>}
+                    <span className={`chip ${attrClass(g.potential)}`}>{g.potential}</span>
+                  </Td>
+                  <Td>
+                    <span className={`tag ${tagClass(tag)}`}>{tag}</span>
                   </Td>
                   <Td className="num">
                     <span className={`chip ${attrClass(g.reflexes)}`}>{g.reflexes}</span>

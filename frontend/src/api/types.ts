@@ -8,11 +8,11 @@ export interface League {
   teams: TeamSummary[];
 }
 export interface Skater {
-  id: number; name: string; age: number; position: Position;
+  id: number; name: string; age: number; position: Position; potential: number;
   skating: number; shooting: number; passing: number; defense: number; physical: number;
 }
 export interface Goalie {
-  id: number; name: string; age: number;
+  id: number; name: string; age: number; potential: number;
   reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number;
 }
 export interface Roster { team: TeamSummary; skaters: Skater[]; goalies: Goalie[]; }

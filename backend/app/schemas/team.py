@@ -6,6 +6,7 @@ class SkaterOut(BaseModel):
     name: str
     age: int
     position: str
+    potential: int
     skating: int
     shooting: int
     passing: int
@@ -17,6 +18,7 @@ class GoalieOut(BaseModel):
     id: int
     name: str
     age: int
+    potential: int
     reflexes: int
     positioning: int
     rebound_control: int

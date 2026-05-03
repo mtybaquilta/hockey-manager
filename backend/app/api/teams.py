@@ -40,6 +40,7 @@ def get_roster(team_id: int, db: Session = Depends(get_db)):
         skaters=[
             SkaterOut(
                 id=s.id, name=s.name, age=s.age, position=s.position,
+                potential=s.potential,
                 skating=s.skating, shooting=s.shooting, passing=s.passing,
                 defense=s.defense, physical=s.physical,
             )
@@ -48,6 +49,7 @@ def get_roster(team_id: int, db: Session = Depends(get_db)):
         goalies=[
             GoalieOut(
                 id=g.id, name=g.name, age=g.age,
+                potential=g.potential,
                 reflexes=g.reflexes, positioning=g.positioning,
                 rebound_control=g.rebound_control, puck_handling=g.puck_handling,
                 mental=g.mental,
