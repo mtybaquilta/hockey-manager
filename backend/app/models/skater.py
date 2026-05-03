@@ -8,7 +8,9 @@ class Skater(Base):
     __tablename__ = "skater"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    team_id: Mapped[int] = mapped_column(ForeignKey("team.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("team.id", ondelete="SET NULL"), index=True, nullable=True
+    )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[str] = mapped_column(String(2), nullable=False)
