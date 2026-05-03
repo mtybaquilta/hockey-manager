@@ -44,6 +44,8 @@ from sim.rotation import REGULATION_TICKS, build_rotation_schedule, period_at_ti
 from sim.special_teams import (
     SpecialTeams,
     pk_unit_defense,
+    pp_defense_for,
+    pp_forwards_for,
     pp_unit_offense,
     select_special_teams,
 )
@@ -290,13 +292,14 @@ def _on_ice_attackers_and_def(
     exactly once on the returned `deff` value.
     """
     if strength == Strength.PP:
-        attackers = list(attacker_st.pp_forwards)
+        attackers = list(pp_forwards_for(attacker_st, tick))
         defenders = list(defender_st.pk_defense)
         deff = pk_unit_defense(defender_st)
     elif strength == Strength.SH:
         attackers = list(attacker_st.pk_forwards)
-        defenders = list(defender_st.pp_defense)
-        deff = pair_defense(SimLine(skaters=defender_st.pp_defense))
+        opp_pp_d = pp_defense_for(defender_st, tick)
+        defenders = list(opp_pp_d)
+        deff = pair_defense(SimLine(skaters=opp_pp_d))
     else:
         fwd, _ = _on_ice_with_schedule(
             attacker_team.lineup, attacker_fwd_sched, attacker_def_sched, tick

@@ -48,22 +48,45 @@ def _top_n(skaters: list[SimSkater], score_fn, n: int) -> tuple[SimSkater, ...]:
 class SpecialTeams:
     pp_forwards: tuple[SimSkater, SimSkater, SimSkater]
     pp_defense: tuple[SimSkater, SimSkater]
+    pp_forwards2: tuple[SimSkater, SimSkater, SimSkater]
+    pp_defense2: tuple[SimSkater, SimSkater]
     pk_forwards: tuple[SimSkater, SimSkater]
     pk_defense: tuple[SimSkater, SimSkater]
 
 
+# Fraction of PP ice time the second unit gets. PP1 is still the elite unit;
+# rotating PP2 in dilutes top-line point concentration without erasing it.
+PP_UNIT_PERIOD = 5
+PP2_TICKS_PER_PERIOD = 2  # 2 of every 5 PP ticks → 40% PP2
+
+
 def select_special_teams(team: SimTeamLineup) -> SpecialTeams:
     forwards, defense = _split_by_role(_all_skaters(team))
-    pp_f = _top_n(forwards, pp_score, 3)
-    pp_d = _top_n(defense, pp_score, 2)
+    pp_f = _top_n(forwards, pp_score, 6)
+    pp_d = _top_n(defense, pp_score, 4)
     pk_f = _top_n(forwards, pk_score, 2)
     pk_d = _top_n(defense, pk_score, 2)
     return SpecialTeams(
         pp_forwards=(pp_f[0], pp_f[1], pp_f[2]),
         pp_defense=(pp_d[0], pp_d[1]),
+        pp_forwards2=(pp_f[3], pp_f[4], pp_f[5]),
+        pp_defense2=(pp_d[2], pp_d[3]),
         pk_forwards=(pk_f[0], pk_f[1]),
         pk_defense=(pk_d[0], pk_d[1]),
     )
+
+
+def pp_unit_index(tick: int) -> int:
+    """0 → PP1, 1 → PP2. 3/5 ticks PP1, 2/5 PP2."""
+    return 1 if (tick % PP_UNIT_PERIOD) >= (PP_UNIT_PERIOD - PP2_TICKS_PER_PERIOD) else 0
+
+
+def pp_forwards_for(st: SpecialTeams, tick: int) -> tuple[SimSkater, SimSkater, SimSkater]:
+    return st.pp_forwards2 if pp_unit_index(tick) == 1 else st.pp_forwards
+
+
+def pp_defense_for(st: SpecialTeams, tick: int) -> tuple[SimSkater, SimSkater]:
+    return st.pp_defense2 if pp_unit_index(tick) == 1 else st.pp_defense
 
 
 def pp_unit_offense(st: SpecialTeams) -> float:

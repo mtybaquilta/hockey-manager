@@ -2,7 +2,10 @@ from sim.models import Position, SimGoalie, SimLine, SimSkater, SimTeamLineup
 from sim.special_teams import (
     pk_score,
     pk_unit_defense,
+    pp_defense_for,
+    pp_forwards_for,
     pp_score,
+    pp_unit_index,
     pp_unit_offense,
     select_special_teams,
 )
@@ -97,3 +100,35 @@ def test_unit_rating_helpers_return_floats():
     st = select_special_teams(_team_with_specialists())
     assert isinstance(pp_unit_offense(st), float)
     assert isinstance(pk_unit_defense(st), float)
+
+
+def test_pp2_unit_is_distinct_from_pp1():
+    st = select_special_teams(_team_with_specialists())
+    assert len(st.pp_forwards2) == 3 and len(st.pp_defense2) == 2
+    pp1_f = {s.id for s in st.pp_forwards}
+    pp2_f = {s.id for s in st.pp_forwards2}
+    assert pp1_f.isdisjoint(pp2_f)
+    pp1_d = {s.id for s in st.pp_defense}
+    pp2_d = {s.id for s in st.pp_defense2}
+    assert pp1_d.isdisjoint(pp2_d)
+
+
+def test_pp1_outscores_pp2_on_pp_score():
+    st = select_special_teams(_team_with_specialists())
+    pp1 = (*st.pp_forwards, *st.pp_defense)
+    pp2 = (*st.pp_forwards2, *st.pp_defense2)
+    assert sum(pp_score(s) for s in pp1) > sum(pp_score(s) for s in pp2)
+
+
+def test_pp_unit_rotation_is_3_to_2_per_5_ticks():
+    counts = [pp_unit_index(t) for t in range(20)]
+    assert counts.count(0) == 12  # 60% PP1
+    assert counts.count(1) == 8   # 40% PP2
+
+
+def test_pp_helpers_select_correct_unit_per_tick():
+    st = select_special_teams(_team_with_specialists())
+    assert pp_forwards_for(st, 0) == st.pp_forwards
+    assert pp_forwards_for(st, 3) == st.pp_forwards2
+    assert pp_defense_for(st, 5) == st.pp_defense
+    assert pp_defense_for(st, 4) == st.pp_defense2
