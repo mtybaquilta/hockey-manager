@@ -11,6 +11,7 @@ const NAV: { id: string; label: string; to: string; icon: string; match: (p: str
   { id: "standings", label: "Standings", to: "/standings", icon: "M4 20V10m6 10V4m6 16v-7", match: (p) => p.startsWith("/standings") },
   { id: "team", label: "My Team", to: "/team", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0", match: (p) => p.startsWith("/team") && !p.endsWith("/lineup") },
   { id: "lineup", label: "Lineup", to: "/lineup", icon: "M3 5h18M3 12h18M3 19h18", match: (p) => p.endsWith("/lineup") },
+  { id: "free-agents", label: "Free Agents", to: "/free-agents", icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm10-3v6m3-3h-6", match: (p) => p.startsWith("/free-agents") },
   { id: "stats", label: "Stats", to: "/stats", icon: "M4 20V10m6 10V4m6 16v-7m6 7v-12", match: (p) => p.startsWith("/stats") || p.startsWith("/player") },
 ];
 

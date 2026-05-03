@@ -1,11 +1,13 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useState } from "react";
 // Skater/goalie names link to the player detail page.
+import { Button } from "../components/Button";
 import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
 import type { GameplanLineUsage, GameplanStyle } from "../api/types";
+import { useReleaseGoalie, useReleaseSkater } from "../queries/free-agents";
 import { useTeamGameplan, useUpdateTeamGameplan } from "../queries/gameplan";
 import { useLeague } from "../queries/league";
 import { useRoster } from "../queries/teams";
@@ -110,11 +112,24 @@ const TeamPage = () => {
   const fPager = usePager(F);
   const dPager = usePager(D);
   const gPager = usePager(G);
+  const releaseSkater = useReleaseSkater(id);
+  const releaseGoalie = useReleaseGoalie(id);
   if (isChild) return <Outlet />;
   if (!roster.data || !league.data) {
     return <Shell crumbs={["Continental Hockey League", "My Team"]}>Loading…</Shell>;
   }
   const isUser = league.data.user_team_id === id;
+
+  const onReleaseSkater = (sid: number, name: string) => {
+    if (window.confirm(`Release ${name}? They'll become a free agent.`)) {
+      releaseSkater.mutate(sid);
+    }
+  };
+  const onReleaseGoalie = (gid: number, name: string) => {
+    if (window.confirm(`Release ${name}? They'll become a free agent.`)) {
+      releaseGoalie.mutate(gid);
+    }
+  };
 
   const SkaterRow = ({ p }: { p: (typeof F)[number] }) => {
     const ovr = Math.round(0.25 * p.shooting + 0.2 * p.passing + 0.2 * p.skating + 0.2 * p.defense + 0.15 * p.physical);
@@ -145,6 +160,17 @@ const TeamPage = () => {
         <Td className="num">
           <span className={`chip ${attrClass(p.physical)}`}>{p.physical}</span>
         </Td>
+        {isUser && (
+          <Td>
+            <Button
+              variant="ghost"
+              onClick={() => onReleaseSkater(p.id, p.name)}
+              disabled={releaseSkater.isPending}
+            >
+              Release
+            </Button>
+          </Td>
+        )}
       </tr>
     );
   };
@@ -187,6 +213,7 @@ const TeamPage = () => {
               <Th className="num">PS</Th>
               <Th className="num">DF</Th>
               <Th className="num">PH</Th>
+              {isUser && <Th />}
             </tr>
           </thead>
           <tbody>{fPager.slice.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
@@ -211,6 +238,7 @@ const TeamPage = () => {
               <Th className="num">PS</Th>
               <Th className="num">DF</Th>
               <Th className="num">PH</Th>
+              {isUser && <Th />}
             </tr>
           </thead>
           <tbody>{dPager.slice.map((p) => <SkaterRow key={p.id} p={p} />)}</tbody>
@@ -234,6 +262,7 @@ const TeamPage = () => {
               <Th className="num">RC</Th>
               <Th className="num">PH</Th>
               <Th className="num">ME</Th>
+              {isUser && <Th />}
             </tr>
           </thead>
           <tbody>
@@ -265,6 +294,17 @@ const TeamPage = () => {
                   <Td className="num">
                     <span className={`chip ${attrClass(g.mental)}`}>{g.mental}</span>
                   </Td>
+                  {isUser && (
+                    <Td>
+                      <Button
+                        variant="ghost"
+                        onClick={() => onReleaseGoalie(g.id, g.name)}
+                        disabled={releaseGoalie.isPending}
+                      >
+                        Release
+                      </Button>
+                    </Td>
+                  )}
                 </tr>
               );
             })}
