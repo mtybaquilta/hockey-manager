@@ -123,12 +123,23 @@ export interface SkaterGameLogRow {
   game_id: number; matchday: number; opponent_team_id: number; is_home: boolean;
   goals: number; assists: number; points: number; shots: number;
 }
+export interface LineupStatus { slot_label: string | null; special_teams: string[]; }
+export interface SkaterTeamRanks {
+  points: number | null; goals: number | null; assists: number | null; shots: number | null;
+  team_skater_count: number;
+}
+export interface GoalieTeamRanks {
+  save_pct: number | null; wins: number | null; games_played: number | null;
+  team_goalie_count: number;
+}
 export interface SkaterDetail {
   id: number; name: string; age: number; position: Position; team_id: number;
   potential: number; development_type: string;
   attributes: { skating: number; shooting: number; passing: number; defense: number; physical: number };
   totals: SkaterTotals;
   game_log: SkaterGameLogRow[];
+  lineup_status: LineupStatus;
+  team_ranks: SkaterTeamRanks;
 }
 
 export interface GoalieTotals {
@@ -144,6 +155,8 @@ export interface GoalieDetail {
   attributes: { reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number };
   totals: GoalieTotals;
   game_log: GoalieGameLogRow[];
+  lineup_status: LineupStatus;
+  team_ranks: GoalieTeamRanks;
 }
 
 export interface DevelopmentEventOut {

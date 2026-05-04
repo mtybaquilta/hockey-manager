@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.db import get_db
 from app.main import app
 from app.services.generation.schedule import GAMES_PER_TEAM
+from app.services.generation.teams import TEAM_COUNT
 
 EXPECTED_MATCHDAYS = GAMES_PER_TEAM
 
