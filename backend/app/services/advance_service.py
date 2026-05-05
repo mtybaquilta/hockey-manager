@@ -7,12 +7,14 @@ from app.models import (
     Goalie,
     GoalieGameStat,
     Lineup,
+    PlayoffSeries,
     Season,
     Skater,
     SkaterGameStat,
     Standing,
     TeamGameplan,
 )
+from app.services import playoff_service
 from sim.engine import simulate_game
 from sim.models import (
     Position,
@@ -125,6 +127,130 @@ def _apply_standing(
             sh.points += 1
 
 
+def _simulate_game_row(
+    db: Session,
+    g: Game,
+    season: Season,
+    standings: dict[int, Standing],
+) -> int:
+    """Simulate one game row, persist events/stats, update standings if RS.
+    Returns the game id."""
+    home_lu = _build_lineup(db, g.home_team_id)
+    away_lu = _build_lineup(db, g.away_team_id)
+    seed = derive_game_seed(season.seed, g.id)
+    home_gp = _gameplan_for(db, g.home_team_id)
+    away_gp = _gameplan_for(db, g.away_team_id)
+    result = simulate_game(
+        SimGameInput(
+            home=SimTeamInput(lineup=home_lu, gameplan=home_gp),
+            away=SimTeamInput(lineup=away_lu, gameplan=away_gp),
+            seed=seed,
+        )
+    )
+
+    g.status = "simulated"
+    g.home_score = result.home_score
+    g.away_score = result.away_score
+    g.home_shots = result.home_shots
+    g.away_shots = result.away_shots
+    g.result_type = result.result_type.value
+    g.seed = seed
+
+    for e in result.events:
+        db.add(
+            GameEvent(
+                game_id=g.id,
+                tick=e.tick,
+                period=e.period,
+                kind=e.kind.value,
+                strength=e.strength.value if e.strength is not None else None,
+                team_id=g.home_team_id if e.team_is_home else g.away_team_id,
+                primary_skater_id=e.primary_skater_id,
+                assist1_id=e.assist1_id,
+                assist2_id=e.assist2_id,
+                goalie_id=e.goalie_id,
+                penalty_duration_ticks=e.penalty_duration_ticks,
+                shot_quality=e.shot_quality.value if e.shot_quality is not None else None,
+            )
+        )
+    for ss in result.skater_stats:
+        db.add(
+            SkaterGameStat(
+                game_id=g.id,
+                skater_id=ss.skater_id,
+                goals=ss.goals,
+                assists=ss.assists,
+                shots=ss.shots,
+            )
+        )
+    for gs in result.goalie_stats:
+        db.add(
+            GoalieGameStat(
+                game_id=g.id,
+                goalie_id=gs.goalie_id,
+                shots_against=gs.shots_against,
+                saves=gs.saves,
+                goals_against=gs.goals_against,
+            )
+        )
+    if g.phase == "regular_season":
+        _apply_standing(
+            standings,
+            g.home_team_id,
+            g.away_team_id,
+            result.home_score,
+            result.away_score,
+            result.result_type,
+        )
+    return g.id
+
+
+def _advance_playoffs(
+    db: Session, season: Season, affected_series_ids: set[int]
+) -> None:
+    """After playoff games on the just-completed matchday have been simmed,
+    recount each affected series, then either schedule next series games on
+    the new current_matchday, build the next round, or finish the season."""
+    for sid in affected_series_ids:
+        series = db.query(PlayoffSeries).filter_by(id=sid).one()
+        playoff_service.recompute_series_state(db, series)
+    db.flush()
+
+    current_round = playoff_service.latest_round(db, season.id)
+    assert current_round is not None  # we are in playoffs phase
+    active = (
+        db.query(PlayoffSeries)
+        .filter_by(season_id=season.id, round=current_round, status="active")
+        .order_by(PlayoffSeries.bracket_slot)
+        .all()
+    )
+    if active:
+        for s in active:
+            playoff_service.schedule_next_game_for_series(
+                db, s, season.id, season.current_matchday
+            )
+        db.flush()
+        return
+
+    # Round complete.
+    if current_round == playoff_service.ROUND_FINAL:
+        final = (
+            db.query(PlayoffSeries)
+            .filter_by(season_id=season.id, round=playoff_service.ROUND_FINAL)
+            .first()
+        )
+        season.champion_team_id = final.winner_team_id if final else None
+        season.status = "complete"
+        db.flush()
+        return
+
+    new_series = playoff_service.build_next_round(db, season, current_round)
+    playoff_service.schedule_round_first_games(
+        db, season.id, new_series, season.current_matchday
+    )
+    db.flush()
+
+
 def advance_matchday(db: Session) -> dict:
     season = db.query(Season).order_by(Season.id.desc()).first()
     if not season:
@@ -134,83 +260,46 @@ def advance_matchday(db: Session) -> dict:
 
     games = (
         db.query(Game)
-        .filter_by(season_id=season.id, matchday=season.current_matchday, status="scheduled")
+        .filter_by(
+            season_id=season.id,
+            matchday=season.current_matchday,
+            status="scheduled",
+        )
         .order_by(Game.id)
         .all()
     )
-    standings = {s.team_id: s for s in db.query(Standing).filter_by(season_id=season.id).all()}
+    standings = {
+        s.team_id: s for s in db.query(Standing).filter_by(season_id=season.id).all()
+    }
     advanced_ids: list[int] = []
+    affected_series_ids: set[int] = set()
 
     for g in games:
-        home_lu = _build_lineup(db, g.home_team_id)
-        away_lu = _build_lineup(db, g.away_team_id)
-        seed = derive_game_seed(season.seed, g.id)
-        home_gp = _gameplan_for(db, g.home_team_id)
-        away_gp = _gameplan_for(db, g.away_team_id)
-        result = simulate_game(
-            SimGameInput(
-                home=SimTeamInput(lineup=home_lu, gameplan=home_gp),
-                away=SimTeamInput(lineup=away_lu, gameplan=away_gp),
-                seed=seed,
-            )
-        )
-
-        g.status = "simulated"
-        g.home_score = result.home_score
-        g.away_score = result.away_score
-        g.home_shots = result.home_shots
-        g.away_shots = result.away_shots
-        g.result_type = result.result_type.value
-        g.seed = seed
-
-        for e in result.events:
-            db.add(
-                GameEvent(
-                    game_id=g.id,
-                    tick=e.tick,
-                    period=e.period,
-                    kind=e.kind.value,
-                    strength=e.strength.value if e.strength is not None else None,
-                    team_id=g.home_team_id if e.team_is_home else g.away_team_id,
-                    primary_skater_id=e.primary_skater_id,
-                    assist1_id=e.assist1_id,
-                    assist2_id=e.assist2_id,
-                    goalie_id=e.goalie_id,
-                    penalty_duration_ticks=e.penalty_duration_ticks,
-                    shot_quality=e.shot_quality.value if e.shot_quality is not None else None,
-                )
-            )
-        for ss in result.skater_stats:
-            db.add(
-                SkaterGameStat(
-                    game_id=g.id,
-                    skater_id=ss.skater_id,
-                    goals=ss.goals,
-                    assists=ss.assists,
-                    shots=ss.shots,
-                )
-            )
-        for gs in result.goalie_stats:
-            db.add(
-                GoalieGameStat(
-                    game_id=g.id,
-                    goalie_id=gs.goalie_id,
-                    shots_against=gs.shots_against,
-                    saves=gs.saves,
-                    goals_against=gs.goals_against,
-                )
-            )
-        _apply_standing(
-            standings, g.home_team_id, g.away_team_id, result.home_score, result.away_score, result.result_type
-        )
-        advanced_ids.append(g.id)
+        gid = _simulate_game_row(db, g, season, standings)
+        advanced_ids.append(gid)
+        if g.phase == "playoffs" and g.series_id is not None:
+            affected_series_ids.add(g.series_id)
 
     season.current_matchday += 1
     db.flush()
-    remaining = db.query(Game).filter_by(season_id=season.id, status="scheduled").count()
-    if remaining == 0:
-        season.status = "complete"
-        db.flush()
+
+    if season.phase == "regular_season":
+        remaining_rs = (
+            db.query(Game)
+            .filter_by(
+                season_id=season.id, status="scheduled", phase="regular_season"
+            )
+            .count()
+        )
+        if remaining_rs == 0:
+            season.phase = "playoffs"
+            r1 = playoff_service.create_first_round(db, season)
+            playoff_service.schedule_round_first_games(
+                db, season.id, r1, season.current_matchday
+            )
+            db.flush()
+    elif season.phase == "playoffs":
+        _advance_playoffs(db, season, affected_series_ids)
 
     return {
         "advanced_game_ids": advanced_ids,

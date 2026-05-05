@@ -8,6 +8,7 @@ from app.api import (
     league,
     lineup,
     players,
+    playoffs,
     schedule,
     season,
     standings,
@@ -32,5 +33,6 @@ for r in (
     gameplan.list_router,
     free_agents.router,
     trades.router,
+    playoffs.router,
 ):
     api_router.include_router(r)

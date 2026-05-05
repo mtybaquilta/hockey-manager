@@ -9,6 +9,7 @@ const NAV: { id: string; label: string; to: string; icon: string; match: (p: str
   { id: "dashboard", label: "Dashboard", to: "/", icon: "M3 12L12 4l9 8M5 10v10h14V10", match: (p) => p === "/" },
   { id: "schedule", label: "Schedule", to: "/schedule", icon: "M3 7h18M3 7v12a1 1 0 001 1h16a1 1 0 001-1V7M3 7l1-3h16l1 3M8 11v4m4-4v4m4-4v4", match: (p) => p.startsWith("/schedule") || p.startsWith("/game") },
   { id: "standings", label: "Standings", to: "/standings", icon: "M4 20V10m6 10V4m6 16v-7", match: (p) => p.startsWith("/standings") },
+  { id: "playoffs", label: "Playoffs", to: "/playoffs", icon: "M6 4v16M18 4v16M6 8h12M6 16h12M10 12h4", match: (p) => p.startsWith("/playoffs") },
   { id: "team", label: "My Team", to: "/team", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0", match: (p) => p.startsWith("/team") && !p.endsWith("/lineup") },
   { id: "lineup", label: "Lineup", to: "/lineup", icon: "M3 5h18M3 12h18M3 19h18", match: (p) => p.endsWith("/lineup") },
   { id: "free-agents", label: "Free Agents", to: "/free-agents", icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm10-3v6m3-3h-6", match: (p) => p.startsWith("/free-agents") },
@@ -107,7 +108,11 @@ export const Shell = ({
           <div className="grow"></div>
           <span className="chl-pill">
             <span className="dot"></span>
-            {league.data?.status === "complete" ? "SEASON COMPLETE" : `MATCHDAY ${matchday}`}
+            {league.data?.status === "complete"
+              ? "SEASON COMPLETE"
+              : league.data?.phase === "playoffs"
+              ? `PLAYOFFS · MD ${matchday}`
+              : `MATCHDAY ${matchday}`}
           </span>
           {topRight}
         </div>

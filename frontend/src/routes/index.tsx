@@ -46,6 +46,7 @@ const Dashboard = () => {
   const top5 = standings.data.rows.slice(0, 5);
   const diff = myRow ? myRow.goals_for - myRow.goals_against : 0;
   const seasonComplete = status.data?.status === "complete";
+  const inPlayoffs = league.data.phase === "playoffs" && !seasonComplete;
 
   const onAdvance = () =>
     advance.mutate(undefined, {
@@ -60,15 +61,26 @@ const Dashboard = () => {
     <Shell crumbs={["Continental Hockey League", "Dashboard"]}>
       <div className="section-h">
         <h1>Dashboard</h1>
-        <span className="sub">{me.name} · '25-26 Regular Season</span>
+        <span className="sub">
+          {me.name} · '25-26 {inPlayoffs ? "Playoffs" : "Regular Season"}
+        </span>
         <div style={{ flex: 1 }} />
+        {inPlayoffs && (
+          <Link to="/playoffs" className="btn" style={{ marginRight: 8 }}>
+            Bracket →
+          </Link>
+        )}
         {seasonComplete ? (
           <Link to="/season-complete" className="btn btn-primary">
             Season complete →
           </Link>
         ) : (
           <button className="btn btn-primary" disabled={advance.isPending} onClick={onAdvance}>
-            {advance.isPending ? "Simulating…" : "Sim to Next Matchday →"}
+            {advance.isPending
+              ? "Simulating…"
+              : inPlayoffs
+              ? "Sim Next Playoff Day →"
+              : "Sim to Next Matchday →"}
           </button>
         )}
       </div>

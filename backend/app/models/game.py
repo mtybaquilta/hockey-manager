@@ -19,3 +19,10 @@ class Game(Base):
     away_shots: Mapped[int | None] = mapped_column(Integer, nullable=True)
     result_type: Mapped[str | None] = mapped_column(String(3), nullable=True)
     seed: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    phase: Mapped[str] = mapped_column(
+        String(16), default="regular_season", nullable=False
+    )
+    series_id: Mapped[int | None] = mapped_column(
+        ForeignKey("playoff_series.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    game_in_series: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -23,13 +23,34 @@ def test_advance_one_matchday(db):
     assert 2 * GAMES_PER_MATCHDAY <= points_total <= 3 * GAMES_PER_MATCHDAY
 
 
-def test_full_season_runs_to_complete(db):
+def test_full_regular_season_transitions_to_playoffs(db):
     create_or_reset_league(db, seed=2)
     for _ in range(MATCHDAYS):
         advance_matchday(db)
     season = db.query(Season).one()
+    # Regular season is complete but playoffs have just begun, so the season
+    # itself stays active until the final ends.
+    assert season.status == "active"
+    assert season.phase == "playoffs"
+    assert (
+        db.query(Game).filter_by(status="simulated", phase="regular_season").count()
+        == TOTAL_GAMES
+    )
+
+
+def test_full_season_runs_to_complete_through_playoffs(db):
+    create_or_reset_league(db, seed=2)
+    while True:
+        res = advance_matchday(db)
+        if res["season_status"] == "complete":
+            break
+    season = db.query(Season).one()
     assert season.status == "complete"
-    assert db.query(Game).filter_by(status="simulated").count() == TOTAL_GAMES
+    assert season.champion_team_id is not None
+    assert (
+        db.query(Game).filter_by(status="simulated", phase="regular_season").count()
+        == TOTAL_GAMES
+    )
     with pytest.raises(SeasonAlreadyComplete):
         advance_matchday(db)
 

@@ -3,6 +3,7 @@ from app.models.game import Game
 from app.models.game_event import GameEvent
 from app.models.goalie import Goalie
 from app.models.lineup import Lineup
+from app.models.playoff_series import PlayoffSeries
 from app.models.season import Season
 from app.models.season_progression import SeasonProgression
 from app.models.skater import Skater
@@ -17,6 +18,7 @@ __all__ = [
     "GameEvent",
     "Goalie",
     "Lineup",
+    "PlayoffSeries",
     "Season",
     "SeasonProgression",
     "Skater",

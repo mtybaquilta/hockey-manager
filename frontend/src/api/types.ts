@@ -2,9 +2,12 @@ export type ResultType = "REG" | "OT" | "SO";
 export type Position = "LW" | "C" | "RW" | "LD" | "RD";
 
 export interface TeamSummary { id: number; name: string; abbreviation: string; }
+export type SeasonPhase = "regular_season" | "playoffs";
 export interface League {
   season_id: number; seed: number; user_team_id: number | null;
   current_matchday: number; status: "active" | "complete";
+  phase: SeasonPhase;
+  champion_team_id: number | null;
   teams: TeamSummary[];
 }
 export interface Skater {
@@ -199,6 +202,39 @@ export interface Gameplan {
   style: GameplanStyle;
   line_usage: GameplanLineUsage;
   editable: boolean;
+}
+
+export interface PlayoffGame {
+  id: number;
+  matchday: number;
+  game_in_series: number;
+  home_team_id: number;
+  away_team_id: number;
+  status: "scheduled" | "simulated";
+  home_score: number | null;
+  away_score: number | null;
+  result_type: ResultType | null;
+}
+export interface PlayoffSeries {
+  id: number;
+  round: number;
+  bracket_slot: number;
+  high_seed: number;
+  low_seed: number;
+  high_seed_team_id: number | null;
+  low_seed_team_id: number | null;
+  wins_high: number;
+  wins_low: number;
+  winner_team_id: number | null;
+  status: "active" | "complete";
+  games: PlayoffGame[];
+}
+export interface PlayoffRound { round: number; series: PlayoffSeries[]; }
+export interface Playoffs {
+  phase: SeasonPhase;
+  season_status: "active" | "complete";
+  champion_team_id: number | null;
+  rounds: PlayoffRound[];
 }
 
 export interface ApiError { error_code: string; message: string; }

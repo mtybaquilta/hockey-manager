@@ -17,6 +17,8 @@ class LeagueOut(BaseModel):
     user_team_id: int | None
     current_matchday: int
     status: str
+    phase: str
+    champion_team_id: int | None
     teams: list[TeamSummary]
 
 
