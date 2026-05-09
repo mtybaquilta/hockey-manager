@@ -240,7 +240,7 @@ def _advance_playoffs(
             .first()
         )
         season.champion_team_id = final.winner_team_id if final else None
-        season.status = "complete"
+        season.phase = "offseason"
         db.flush()
         return
 
@@ -305,4 +305,5 @@ def advance_matchday(db: Session) -> dict:
         "advanced_game_ids": advanced_ids,
         "current_matchday": season.current_matchday,
         "season_status": season.status,
+        "season_phase": season.phase,
     }
