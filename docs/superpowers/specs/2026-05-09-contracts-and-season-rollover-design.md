@@ -68,7 +68,7 @@ To avoid confusion as `offseason` is introduced:
 
 ### "Free agent" definition
 
-Unchanged: `team_id IS NULL` ⇔ FA. Equivalently and more directly: a FA is a player with no contract whose `status = 'active'`. The two conditions are kept in sync by every code path that sets one (sign, release, rollover).
+A free agent is a player with **`team_id IS NULL` AND no contract with `status = 'active'`**. Both conditions hold together — every code path that signs, releases, or expires a player sets both consistently (sign → set team_id, insert active contract; release → null team_id, terminate active contract; rollover → null team_id, expire active contract).
 
 ---
 
@@ -262,6 +262,14 @@ The `phase = "offseason"` precondition plus the immediate `status = "complete"` 
 ### Integration
 
 Full flow: create league → sim full season → reach offseason → rollover → advance one matchday in the new season.
+
+---
+
+## Implementation notes
+
+- **Active-contract repository helpers.** All "is this player a FA / what's their contract / what are their terms" lookups go through a shared helper (e.g. `get_active_contract(db, skater_id)`, `get_active_contract_for_goalie(db, goalie_id)`). Every query filters `status = 'active'` in one place, so callers can't drift. Trade evaluator, sign endpoint, release endpoint, rollover, and UI serializers all use these helpers.
+- **Rollover row-lock.** The rollover transaction selects the current `active` season with `SELECT ... FOR UPDATE` as its first step. Combined with the `phase = 'offseason'` precondition, this prevents a double-click or concurrent rollover request from creating two new seasons. The 409 path returns cleanly; the lock is released on commit/rollback.
+- **Status state-machine enforcement.** Contract status transitions live in service helpers (`terminate_contract`, `expire_contract`) — no raw status writes from endpoints. Helpers assert the current status is `active` before flipping, so a release-then-rollover (or rollover-then-release) double-write is caught loudly.
 
 ---
 
