@@ -342,6 +342,11 @@ def start_next_season(db: Session) -> dict:
         db.add(Standing(team_id=tid, season_id=new_season.id))
 
     season.status = "complete"
+    from app.services import manager_profile_service
+
+    mgr = manager_profile_service.get_active_profile(db)
+    if mgr is not None:
+        mgr.seasons_completed += 1
     db.flush()
 
     return {

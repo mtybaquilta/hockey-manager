@@ -7,6 +7,7 @@ from app.models import (
     Goalie,
     GoalieGameStat,
     Lineup,
+    ManagerProfile,
     PlayoffSeries,
     Season,
     Skater,
@@ -14,7 +15,7 @@ from app.models import (
     Standing,
     TeamGameplan,
 )
-from app.services import playoff_service
+from app.services import manager_profile_service, playoff_service
 from sim.engine import simulate_game
 from sim.models import (
     Position,
@@ -101,6 +102,7 @@ def _apply_standing(
     home: int,
     away: int,
     result_type: ResultType,
+    manager: "ManagerProfile | None" = None,
 ) -> None:
     sh, sa = stand_by_team[home_id], stand_by_team[away_id]
     sh.games_played += 1
@@ -126,12 +128,25 @@ def _apply_standing(
             sh.ot_losses += 1
             sh.points += 1
 
+    if manager is not None and manager.current_team_id in (home_id, away_id):
+        user_won = (
+            (home > away and manager.current_team_id == home_id)
+            or (away > home and manager.current_team_id == away_id)
+        )
+        if user_won:
+            manager.career_wins += 1
+        elif result_type == ResultType.REG:
+            manager.career_losses += 1
+        else:
+            manager.career_ot_losses += 1
+
 
 def _simulate_game_row(
     db: Session,
     g: Game,
     season: Season,
     standings: dict[int, Standing],
+    manager: ManagerProfile | None = None,
 ) -> int:
     """Simulate one game row, persist events/stats, update standings if RS.
     Returns the game id."""
@@ -201,6 +216,7 @@ def _simulate_game_row(
             result.home_score,
             result.away_score,
             result.result_type,
+            manager=manager,
         )
     return g.id
 
@@ -241,6 +257,13 @@ def _advance_playoffs(
         )
         season.champion_team_id = final.winner_team_id if final else None
         season.phase = "offseason"
+        manager = manager_profile_service.get_active_profile(db)
+        if (
+            manager is not None
+            and manager.current_team_id is not None
+            and season.champion_team_id == manager.current_team_id
+        ):
+            manager.championships_won += 1
         db.flush()
         return
 
@@ -273,11 +296,12 @@ def advance_matchday(db: Session) -> dict:
     standings = {
         s.team_id: s for s in db.query(Standing).filter_by(season_id=season.id).all()
     }
+    manager = manager_profile_service.get_active_profile(db)
     advanced_ids: list[int] = []
     affected_series_ids: set[int] = set()
 
     for g in games:
-        gid = _simulate_game_row(db, g, season, standings)
+        gid = _simulate_game_row(db, g, season, standings, manager=manager)
         advanced_ids.append(gid)
         if g.phase == "playoffs" and g.series_id is not None:
             affected_series_ids.add(g.series_id)
