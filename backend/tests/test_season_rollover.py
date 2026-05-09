@@ -1,7 +1,8 @@
 import pytest
 
-from app.errors import NoActiveSeason, SeasonNotComplete
+from app.errors import NoActiveSeason, OffseasonRequired
 from app.models import (
+    Contract,
     DevelopmentEvent,
     Game,
     Goalie,
@@ -11,14 +12,20 @@ from app.models import (
     SkaterGameStat,
     Standing,
 )
-from app.services import season_rollover_service
+from app.services import contract_service, season_rollover_service
 from app.services.advance_service import advance_matchday
 from app.services.league_service import create_or_reset_league
+from app.services.player_age import age_from_birth_date
 
 
-def _play_through(db) -> None:
-    while advance_matchday(db)["season_status"] != "complete":
-        pass
+def _play_to_offseason(db) -> None:
+    for _ in range(5000):
+        res = advance_matchday(db)
+        if res["season_phase"] == "offseason":
+            return
+        if res["season_status"] == "complete":
+            return
+    raise AssertionError("did not reach offseason")
 
 
 def test_rollover_raises_when_no_active_season(db):
@@ -26,17 +33,17 @@ def test_rollover_raises_when_no_active_season(db):
         season_rollover_service.start_next_season(db)
 
 
-def test_rollover_raises_when_season_not_complete(db):
+def test_rollover_blocked_outside_offseason(db):
     create_or_reset_league(db, seed=42)
     db.flush()
-    with pytest.raises(SeasonNotComplete):
+    with pytest.raises(OffseasonRequired):
         season_rollover_service.start_next_season(db)
 
 
 def test_rollover_creates_new_season_and_resets_state(db):
     old = create_or_reset_league(db, seed=2026)
     db.flush()
-    _play_through(db)
+    _play_to_offseason(db)
     season_rollover_service.start_next_season(db)
     db.flush()
 
@@ -47,6 +54,8 @@ def test_rollover_creates_new_season_and_resets_state(db):
     assert new.user_team_id == old.user_team_id
     assert new.current_matchday == 1
     assert new.status == "active"
+    assert new.phase == "regular_season"
+    assert new.year == old.year + 1
 
     new_games = db.query(Game).filter_by(season_id=new.id).count()
     assert new_games > 0
@@ -59,23 +68,31 @@ def test_rollover_creates_new_season_and_resets_state(db):
 
 
 def test_rollover_ages_every_player(db):
-    create_or_reset_league(db, seed=2026)
+    old = create_or_reset_league(db, seed=2026)
     db.flush()
-    _play_through(db)
-    skater_ages = {s.id: s.age for s in db.query(Skater).all()}
-    goalie_ages = {g.id: g.age for g in db.query(Goalie).all()}
+    old_year = old.year
+    _play_to_offseason(db)
+    skater_ages = {
+        s.id: age_from_birth_date(s.birth_date, old_year) for s in db.query(Skater).all()
+    }
+    goalie_ages = {
+        g.id: age_from_birth_date(g.birth_date, old_year) for g in db.query(Goalie).all()
+    }
     season_rollover_service.start_next_season(db)
     db.flush()
+    new = (
+        db.query(Season).filter_by(status="active").order_by(Season.id.desc()).first()
+    )
     for s in db.query(Skater).all():
-        assert s.age == skater_ages[s.id] + 1
+        assert age_from_birth_date(s.birth_date, new.year) == skater_ages[s.id] + 1
     for g in db.query(Goalie).all():
-        assert g.age == goalie_ages[g.id] + 1
+        assert age_from_birth_date(g.birth_date, new.year) == goalie_ages[g.id] + 1
 
 
 def test_rollover_persists_progression_and_events(db):
     create_or_reset_league(db, seed=2026)
     db.flush()
-    _play_through(db)
+    _play_to_offseason(db)
     season_rollover_service.start_next_season(db)
     db.flush()
     new = (
@@ -84,11 +101,8 @@ def test_rollover_persists_progression_and_events(db):
     progressions = (
         db.query(SeasonProgression).filter_by(to_season_id=new.id).all()
     )
-    expected_count = (
-        db.query(Skater).count() + db.query(Goalie).count()
-    )
+    expected_count = db.query(Skater).count() + db.query(Goalie).count()
     assert len(progressions) == expected_count
-    # development_event rows are present (could be zero in unlikely cohorts; sanity only)
     event_count = db.query(DevelopmentEvent).count()
     assert event_count >= 0
 
@@ -96,10 +110,30 @@ def test_rollover_persists_progression_and_events(db):
 def test_rollover_preserves_old_data(db):
     old = create_or_reset_league(db, seed=2026)
     db.flush()
-    _play_through(db)
+    _play_to_offseason(db)
     old_game_count = db.query(Game).filter_by(season_id=old.id).count()
     old_stats_count = db.query(SkaterGameStat).count()
     season_rollover_service.start_next_season(db)
     db.flush()
     assert db.query(Game).filter_by(season_id=old.id).count() == old_game_count
     assert db.query(SkaterGameStat).count() == old_stats_count
+
+
+def test_rollover_expires_contracts_and_frees_players(db_with_league):
+    db = db_with_league
+    sk = db.query(Skater).filter(Skater.team_id.is_not(None)).first()
+    c = contract_service.get_active_contract_for_skater(db, sk.id)
+    season = db.query(Season).order_by(Season.id.desc()).one()
+    c.expires_after_year = season.year  # expires after this year
+    season.phase = "offseason"
+    db.flush()
+
+    season_rollover_service.start_next_season(db)
+    db.flush()
+
+    db.refresh(c)
+    db.refresh(sk)
+    assert c.status == "expired"
+    assert sk.team_id is None
+    # The Contract row remains as history.
+    assert db.query(Contract).filter_by(id=c.id).one_or_none() is not None

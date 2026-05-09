@@ -1,9 +1,10 @@
 import random
 from collections import defaultdict
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.errors import NoActiveSeason, SeasonNotComplete
+from app.errors import NoActiveSeason, OffseasonRequired
 from app.models import (
     DevelopmentEvent,
     Game,
@@ -16,7 +17,13 @@ from app.models import (
     Standing,
     Team,
 )
+from app.services import contract_service
+from app.services.free_agents_service import (
+    _clear_goalie_from_lineup,
+    _clear_skater_from_lineup,
+)
 from app.services.generation.schedule import generate_schedule
+from app.services.player_age import age_from_birth_date
 from sim.development import (
     GOALIE_ATTRIBUTES,
     SKATER_ATTRIBUTES,
@@ -154,34 +161,29 @@ def _persist_progression(
 
 def start_next_season(db: Session) -> dict:
     season = (
-        db.query(Season)
-        .filter(Season.status.in_(["active", "complete"]))
-        .order_by(Season.id.desc())
+        db.execute(select(Season).order_by(Season.id.desc()).limit(1))
+        .scalars()
         .first()
     )
     if season is None:
-        raise NoActiveSeason("no active or completed season")
-    if season.status != "complete":
-        raise SeasonNotComplete(
-            f"season {season.id} status={season.status!r}; expected 'complete'"
-        )
-    scheduled = (
-        db.query(Game).filter_by(season_id=season.id, status="scheduled").count()
-    )
-    if scheduled > 0:
-        raise SeasonNotComplete(
-            f"season {season.id} has {scheduled} scheduled games remaining"
+        raise NoActiveSeason("no active season")
+    if season.phase != "offseason":
+        raise OffseasonRequired(
+            f"season {season.id} phase={season.phase!r}; expected 'offseason'"
         )
 
     league_ppg = _league_skater_ppg(db, season.id)
     league_sv = _league_save_pct(db, season.id)
 
     new_seed = (season.seed * 31 + season.id) & 0x7FFFFFFF
+    new_year = season.year + 1
     new_season = Season(
         seed=new_seed,
         user_team_id=season.user_team_id,
         current_matchday=1,
         status="active",
+        phase="regular_season",
+        year=new_year,
     )
     db.add(new_season)
     db.flush()
@@ -190,11 +192,13 @@ def start_next_season(db: Session) -> dict:
     goalies = db.query(Goalie).all()
 
     for s in skaters:
+        age_before = age_from_birth_date(s.birth_date, season.year)
+        age_after = age_from_birth_date(s.birth_date, new_year)
         perf = _skater_perf_signal(db, season.id, s.id, league_ppg)
         inp = PlayerDevInput(
             player_id=s.id,
             player_type="skater",
-            age=s.age,
+            age=age_before,
             attrs={
                 "skating": s.skating,
                 "shooting": s.shooting,
@@ -213,21 +217,22 @@ def start_next_season(db: Session) -> dict:
             to_season_id=new_season.id,
             player_type="skater",
             player_id=s.id,
-            age_before=s.age,
-            age_after=s.age + 1,
+            age_before=age_before,
+            age_after=age_after,
             potential=s.potential,
             development_type=s.development_type,
             result=result,
         )
         _apply_skater_development(s, result)
-        s.age += 1
 
     for g in goalies:
+        age_before = age_from_birth_date(g.birth_date, season.year)
+        age_after = age_from_birth_date(g.birth_date, new_year)
         perf = _goalie_perf_signal(db, season.id, g.id, league_sv)
         inp = PlayerDevInput(
             player_id=g.id,
             player_type="goalie",
-            age=g.age,
+            age=age_before,
             attrs={
                 "reflexes": g.reflexes,
                 "positioning": g.positioning,
@@ -246,20 +251,43 @@ def start_next_season(db: Session) -> dict:
             to_season_id=new_season.id,
             player_type="goalie",
             player_id=g.id,
-            age_before=g.age,
-            age_after=g.age + 1,
+            age_before=age_before,
+            age_after=age_after,
             potential=g.potential,
             development_type=g.development_type,
             result=result,
         )
         _apply_goalie_development(g, result)
-        g.age += 1
+
+    expired_players = contract_service.expire_contracts_through_year(
+        db, new_season_year=new_year
+    )
+    for player_type, player_id in expired_players:
+        if player_type == "skater":
+            sk = db.query(Skater).filter_by(id=player_id).one()
+            if sk.team_id is not None:
+                _clear_skater_from_lineup(db, sk.team_id, sk.id)
+                sk.team_id = None
+        else:
+            gl = db.query(Goalie).filter_by(id=player_id).one()
+            if gl.team_id is not None:
+                _clear_goalie_from_lineup(db, gl.team_id, gl.id)
+                gl.team_id = None
 
     team_ids = [t.id for t in db.query(Team).order_by(Team.id).all()]
     rng = random.Random(new_seed)
     generate_schedule(rng, db, new_season.id, team_ids)
     for tid in team_ids:
         db.add(Standing(team_id=tid, season_id=new_season.id))
+
+    season.status = "complete"
     db.flush()
 
-    return {"new_season_id": new_season.id, "season_id": new_season.id}
+    return {
+        "new_season_id": new_season.id,
+        "season_id": new_season.id,
+        "from_season_id": season.id,
+        "to_season_id": new_season.id,
+        "new_year": new_year,
+        "expired_player_count": len(expired_players),
+    }
