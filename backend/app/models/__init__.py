@@ -1,3 +1,4 @@
+from app.models.contract import Contract
 from app.models.development_event import DevelopmentEvent
 from app.models.game import Game
 from app.models.game_event import GameEvent
@@ -13,6 +14,7 @@ from app.models.team import Team
 from app.models.team_gameplan import TeamGameplan
 
 __all__ = [
+    "Contract",
     "DevelopmentEvent",
     "Game",
     "GameEvent",
