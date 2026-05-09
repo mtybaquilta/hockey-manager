@@ -2,18 +2,30 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.errors import GameNotFound
-from app.models import Game, GameEvent, Goalie, GoalieGameStat, Skater, SkaterGameStat
+from app.errors import (
+    GameAlreadySimulated,
+    GameNotFound,
+    LeagueNotFound,
+)
+from app.models import (
+    Game,
+    GameEvent,
+    Goalie,
+    GoalieGameStat,
+    PlayoffSeries,
+    Season,
+    Skater,
+    SkaterGameStat,
+    Standing,
+)
 from app.schemas.game import EventOut, GameDetailOut, GoalieStatOut, SkaterStatOut
+from app.services import playoff_service
+from app.services.advance_service import _simulate_game_row
 
 router = APIRouter(prefix="/games", tags=["games"])
 
 
-@router.get("/{game_id}", response_model=GameDetailOut)
-def get_game(game_id: int, db: Session = Depends(get_db)):
-    g = db.query(Game).filter_by(id=game_id).first()
-    if not g:
-        raise GameNotFound(f"game {game_id} not found")
+def _build_game_detail(db: Session, g: Game) -> GameDetailOut:
     events = db.query(GameEvent).filter_by(game_id=g.id).order_by(GameEvent.tick, GameEvent.id).all()
     s_stats = db.query(SkaterGameStat).filter_by(game_id=g.id).all()
     g_stats = db.query(GoalieGameStat).filter_by(game_id=g.id).all()
@@ -99,3 +111,53 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
         home_shots_by_period=home_shots_p,
         away_shots_by_period=away_shots_p,
     )
+
+
+@router.get("/{game_id}", response_model=GameDetailOut)
+def get_game(game_id: int, db: Session = Depends(get_db)):
+    g = db.query(Game).filter_by(id=game_id).first()
+    if not g:
+        raise GameNotFound(f"game {game_id} not found")
+    return _build_game_detail(db, g)
+
+
+@router.post("/{game_id}/simulate", response_model=GameDetailOut)
+def post_simulate_game(game_id: int, db: Session = Depends(get_db)):
+    """Simulate a single scheduled game and persist its result.
+
+    For regular-season games, standings are updated. For playoff games, the
+    parent series is recomputed and — if still active — the next game is
+    scheduled on the following matchday. Does not advance the season's
+    current_matchday or trigger round/phase transitions; those still happen
+    via advance_matchday.
+    """
+    g = db.query(Game).filter_by(id=game_id).first()
+    if not g:
+        raise GameNotFound(f"game {game_id} not found")
+    if g.status != "scheduled":
+        raise GameAlreadySimulated(f"game {game_id} already simulated")
+
+    season = db.query(Season).filter_by(id=g.season_id).first()
+    if not season:
+        raise LeagueNotFound("no active league")
+    standings = {
+        s.team_id: s for s in db.query(Standing).filter_by(season_id=season.id).all()
+    }
+    next_matchday = g.matchday + 1
+    is_playoff = g.phase == "playoffs"
+    series_id = g.series_id if is_playoff else None
+
+    _simulate_game_row(db, g, season, standings)
+
+    if is_playoff and series_id is not None:
+        series = db.query(PlayoffSeries).filter_by(id=series_id).one()
+        playoff_service.recompute_series_state(db, series)
+        db.flush()
+        if series.status == "active":
+            playoff_service.schedule_next_game_for_series(
+                db, series, season.id, next_matchday
+            )
+
+    db.commit()
+    db.refresh(g)
+    return _build_game_detail(db, g)

@@ -100,7 +100,7 @@ const Box = () => {
               borderRight: "1px solid rgba(255,255,255,.12)",
             }}
           >
-            <span className="tag tag-final" style={{ fontSize: 10, background: "var(--gold)", color: "#fff" }}>
+            <span className="tag tag-final" style={{ fontSize: 10, background: "var(--amber)", color: "#1a0f00" }}>
               {d.status === "simulated" ? "FINAL" : "SCHEDULED"}
             </span>
             <div style={{ font: "700 22px/1 'Roboto Condensed', monospace", marginTop: 8, color: "var(--gold)" }}>

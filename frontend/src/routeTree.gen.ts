@@ -20,6 +20,7 @@ import { Route as DevelopmentSummaryRouteImport } from './routes/development-sum
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TeamTeamIdRouteImport } from './routes/team.$teamId'
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId'
+import { Route as GamePreviewGameIdRouteImport } from './routes/game-preview.$gameId'
 import { Route as TeamTeamIdLineupRouteImport } from './routes/team.$teamId.lineup'
 import { Route as PlayerSkaterIdRouteImport } from './routes/player.skater.$id'
 import { Route as PlayerGoalieIdRouteImport } from './routes/player.goalie.$id'
@@ -79,6 +80,11 @@ const GameGameIdRoute = GameGameIdRouteImport.update({
   path: '/game/$gameId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GamePreviewGameIdRoute = GamePreviewGameIdRouteImport.update({
+  id: '/game-preview/$gameId',
+  path: '/game-preview/$gameId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeamTeamIdLineupRoute = TeamTeamIdLineupRouteImport.update({
   id: '/lineup',
   path: '/lineup',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
   '/trade-block': typeof TradeBlockRoute
+  '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
   '/trade-block': typeof TradeBlockRoute
+  '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
   '/trade-block': typeof TradeBlockRoute
+  '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/standings'
     | '/stats'
     | '/trade-block'
+    | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/standings'
     | '/stats'
     | '/trade-block'
+    | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/standings'
     | '/stats'
     | '/trade-block'
+    | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/team/$teamId'
     | '/player/goalie/$id'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   StandingsRoute: typeof StandingsRoute
   StatsRoute: typeof StatsRoute
   TradeBlockRoute: typeof TradeBlockRoute
+  GamePreviewGameIdRoute: typeof GamePreviewGameIdRoute
   GameGameIdRoute: typeof GameGameIdRoute
   TeamTeamIdRoute: typeof TeamTeamIdRouteWithChildren
   PlayerGoalieIdRoute: typeof PlayerGoalieIdRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameGameIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/game-preview/$gameId': {
+      id: '/game-preview/$gameId'
+      path: '/game-preview/$gameId'
+      fullPath: '/game-preview/$gameId'
+      preLoaderRoute: typeof GamePreviewGameIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/team/$teamId/lineup': {
       id: '/team/$teamId/lineup'
       path: '/lineup'
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   StandingsRoute: StandingsRoute,
   StatsRoute: StatsRoute,
   TradeBlockRoute: TradeBlockRoute,
+  GamePreviewGameIdRoute: GamePreviewGameIdRoute,
   GameGameIdRoute: GameGameIdRoute,
   TeamTeamIdRoute: TeamTeamIdRouteWithChildren,
   PlayerGoalieIdRoute: PlayerGoalieIdRoute,

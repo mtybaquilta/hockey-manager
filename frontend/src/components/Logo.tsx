@@ -1,10 +1,26 @@
 import { useTeams } from "../queries/teams";
 import { teamPrimary } from "../lib/team-colors";
+import { logoForAbbr } from "../lib/team-logos";
 
 export const Logo = ({ teamId, size = 24 }: { teamId: number; size?: number }) => {
   const teams = useTeams();
   const t = teams.data?.find((x) => x.id === teamId);
   if (!t) return null;
+  const src = logoForAbbr(t.abbreviation);
+  if (src) {
+    return (
+      <span
+        className="logo logo-img"
+        style={{ width: size, height: size, background: "transparent", border: "none", boxShadow: "none" }}
+      >
+        <img
+          src={src}
+          alt={t.abbreviation}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+        />
+      </span>
+    );
+  }
   return (
     <span
       className="logo"
