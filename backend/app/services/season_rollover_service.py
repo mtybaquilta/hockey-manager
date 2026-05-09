@@ -10,6 +10,7 @@ from app.models import (
     Game,
     Goalie,
     GoalieGameStat,
+    Lineup,
     Season,
     SeasonProgression,
     Skater,
@@ -19,6 +20,8 @@ from app.models import (
 )
 from app.services import contract_service
 from app.services.free_agents_service import (
+    GOALIE_LINEUP_COLS,
+    SKATER_LINEUP_COLS,
     _clear_goalie_from_lineup,
     _clear_skater_from_lineup,
 )
@@ -159,6 +162,63 @@ def _persist_progression(
         )
 
 
+def _refill_lineups(db: Session) -> None:
+    """Replace any None slots in each team's lineup with available roster
+    players. Used after rollover, when expired-contract players have been
+    cleared from their lineup slots."""
+    teams = db.query(Team).all()
+    for team in teams:
+        lu = db.query(Lineup).filter_by(team_id=team.id).first()
+        if not lu:
+            continue
+        skaters = db.query(Skater).filter_by(team_id=team.id).all()
+        goalies = db.query(Goalie).filter_by(team_id=team.id).all()
+        used_skaters = {getattr(lu, c) for c in SKATER_LINEUP_COLS if getattr(lu, c) is not None}
+        used_goalies = {getattr(lu, c) for c in GOALIE_LINEUP_COLS if getattr(lu, c) is not None}
+        by_pos: dict[str, list[Skater]] = {}
+        for s in skaters:
+            by_pos.setdefault(s.position, []).append(s)
+        for pool in by_pos.values():
+            pool.sort(key=lambda s: -(s.skating + s.shooting + s.passing + s.defense + s.physical))
+        free_goalies = sorted(
+            [g for g in goalies if g.id not in used_goalies],
+            key=lambda g: -(g.reflexes + g.positioning + g.rebound_control + g.puck_handling + g.mental),
+        )
+
+        col_to_pos = {
+            "line1_lw_id": "LW", "line1_c_id": "C", "line1_rw_id": "RW",
+            "line2_lw_id": "LW", "line2_c_id": "C", "line2_rw_id": "RW",
+            "line3_lw_id": "LW", "line3_c_id": "C", "line3_rw_id": "RW",
+            "line4_lw_id": "LW", "line4_c_id": "C", "line4_rw_id": "RW",
+            "pair1_ld_id": "LD", "pair1_rd_id": "RD",
+            "pair2_ld_id": "LD", "pair2_rd_id": "RD",
+            "pair3_ld_id": "LD", "pair3_rd_id": "RD",
+        }
+        for col in SKATER_LINEUP_COLS:
+            if getattr(lu, col) is not None:
+                continue
+            pos = col_to_pos[col]
+            cands = [s for s in by_pos.get(pos, []) if s.id not in used_skaters]
+            if not cands:
+                # Fall back to any unused skater.
+                for fallback_pos, pool in by_pos.items():
+                    cands = [s for s in pool if s.id not in used_skaters]
+                    if cands:
+                        break
+            if cands:
+                pick = cands[0]
+                setattr(lu, col, pick.id)
+                used_skaters.add(pick.id)
+
+        for col in GOALIE_LINEUP_COLS:
+            if getattr(lu, col) is not None:
+                continue
+            if free_goalies:
+                pick = free_goalies.pop(0)
+                setattr(lu, col, pick.id)
+    db.flush()
+
+
 def start_next_season(db: Session) -> dict:
     season = (
         db.execute(select(Season).order_by(Season.id.desc()).limit(1))
@@ -273,6 +333,8 @@ def start_next_season(db: Session) -> dict:
             if gl.team_id is not None:
                 _clear_goalie_from_lineup(db, gl.team_id, gl.id)
                 gl.team_id = None
+
+    _refill_lineups(db)
 
     team_ids = [t.id for t in db.query(Team).order_by(Team.id).all()]
     rng = random.Random(new_seed)
