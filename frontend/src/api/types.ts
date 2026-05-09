@@ -8,6 +8,38 @@ export interface Contract {
   status: string;
 }
 
+export interface ManagerProfile {
+  id: number;
+  name: string;
+  current_team_id: number | null;
+  created_at: string;
+  seasons_completed: number;
+  championships_won: number;
+  career_wins: number;
+  career_losses: number;
+  career_ot_losses: number;
+}
+
+export interface TeamSelectPlayer {
+  id: number;
+  name: string;
+  position: string | null;
+  ovr: number;
+  potential: number;
+}
+
+export interface TeamSelectOverview {
+  id: number;
+  name: string;
+  abbreviation: string;
+  team_ovr: number;
+  best_player: TeamSelectPlayer | null;
+  best_prospect: TeamSelectPlayer | null;
+  style: string;
+  line_usage: string;
+  difficulty: "easy" | "medium" | "hard";
+}
+
 export type ResultType = "REG" | "OT" | "SO";
 export type Position = "LW" | "C" | "RW" | "LD" | "RD";
 

@@ -2,6 +2,7 @@ import pytest
 
 from app.errors import NoActiveSeason, OffseasonRequired
 from app.models import (
+from app.services import manager_profile_service
     Contract,
     DevelopmentEvent,
     Game,
@@ -53,7 +54,6 @@ def test_rollover_creates_new_season_and_resets_state(db):
         db.query(Season).filter_by(status="active").order_by(Season.id.desc()).first()
     )
     assert new is not None and new.id != old.id
-    assert new.user_team_id == old.user_team_id
     assert new.current_matchday == 1
     assert new.status == "active"
     assert new.phase == "regular_season"

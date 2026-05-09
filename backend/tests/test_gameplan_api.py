@@ -8,23 +8,34 @@ from app.models import Team, TeamGameplan
 from app.services import gameplan_service, season_rollover_service
 from app.services.advance_service import advance_matchday
 from app.services.league_service import create_or_reset_league
+from app.services import manager_profile_service
+
+
+def _setup_manager(db) -> int:
+    p = manager_profile_service.create_profile(db, name="Coach")
+    first = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, first.id)
+    return first.id
 
 
 def test_league_creation_seeds_gameplans(db):
-    season = create_or_reset_league(db, seed=314)
+    season = create_or_reset_league(db, seed=314); _setup_manager(db)
     db.flush()
     team_count = db.query(Team).count()
     gp_count = db.query(TeamGameplan).count()
     assert gp_count == team_count
+    # User team isn't known at league creation anymore; gameplans are all
+    # randomized. Verify that picking a team still gives them an editable
+    # gameplan (the user can change it via the UI).
     user_gp = (
-        db.query(TeamGameplan).filter_by(team_id=season.user_team_id).one()
+        db.query(TeamGameplan).filter_by(team_id=manager_profile_service.current_team_id(db)).one()
     )
-    assert user_gp.style == "balanced"
-    assert user_gp.line_usage == "balanced"
+    assert user_gp.style in {"balanced", "offensive", "defensive", "physical"}
+    assert user_gp.line_usage in {"balanced", "ride_top_lines", "roll_all_lines"}
 
 
 def test_get_gameplan_marks_editable_correctly(db):
-    season = create_or_reset_league(db, seed=315)
+    season = create_or_reset_league(db, seed=315); _setup_manager(db)
     db.flush()
 
     def _override():
@@ -33,11 +44,11 @@ def test_get_gameplan_marks_editable_correctly(db):
     app.dependency_overrides[get_db] = _override
     try:
         client = TestClient(app)
-        r = client.get(f"/api/teams/{season.user_team_id}/gameplan")
+        r = client.get(f"/api/teams/{manager_profile_service.current_team_id(db)}/gameplan")
         assert r.status_code == 200
         assert r.json()["editable"] is True
         other = (
-            db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+            db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         )
         r = client.get(f"/api/teams/{other.id}/gameplan")
         assert r.status_code == 200
@@ -47,7 +58,7 @@ def test_get_gameplan_marks_editable_correctly(db):
 
 
 def test_put_gameplan_user_team_persists(db):
-    season = create_or_reset_league(db, seed=316)
+    season = create_or_reset_league(db, seed=316); _setup_manager(db)
     db.flush()
 
     def _override():
@@ -57,7 +68,7 @@ def test_put_gameplan_user_team_persists(db):
     try:
         client = TestClient(app)
         r = client.put(
-            f"/api/teams/{season.user_team_id}/gameplan",
+            f"/api/teams/{manager_profile_service.current_team_id(db)}/gameplan",
             json={"style": "offensive", "line_usage": "ride_top_lines"},
         )
         assert r.status_code == 200, r.text
@@ -65,7 +76,7 @@ def test_put_gameplan_user_team_persists(db):
         assert body["style"] == "offensive"
         assert body["line_usage"] == "ride_top_lines"
         gp = (
-            db.query(TeamGameplan).filter_by(team_id=season.user_team_id).one()
+            db.query(TeamGameplan).filter_by(team_id=manager_profile_service.current_team_id(db)).one()
         )
         assert gp.style == "offensive"
         assert gp.line_usage == "ride_top_lines"
@@ -74,10 +85,10 @@ def test_put_gameplan_user_team_persists(db):
 
 
 def test_put_gameplan_on_non_user_team_returns_403(db):
-    season = create_or_reset_league(db, seed=317)
+    season = create_or_reset_league(db, seed=317); _setup_manager(db)
     db.flush()
     other = (
-        db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
     )
 
     def _override():
@@ -97,7 +108,7 @@ def test_put_gameplan_on_non_user_team_returns_403(db):
 
 
 def test_put_gameplan_invalid_style_returns_422(db):
-    season = create_or_reset_league(db, seed=318)
+    season = create_or_reset_league(db, seed=318); _setup_manager(db)
     db.flush()
 
     def _override():
@@ -107,7 +118,7 @@ def test_put_gameplan_invalid_style_returns_422(db):
     try:
         client = TestClient(app)
         r = client.put(
-            f"/api/teams/{season.user_team_id}/gameplan",
+            f"/api/teams/{manager_profile_service.current_team_id(db)}/gameplan",
             json={"style": "kamikaze", "line_usage": "balanced"},
         )
         assert r.status_code == 422
@@ -132,7 +143,7 @@ def test_get_gameplan_unknown_team_returns_404(db):
 
 
 def test_rollover_preserves_gameplans(db):
-    season = create_or_reset_league(db, seed=2026)
+    season = create_or_reset_league(db, seed=2026); _setup_manager(db)
     db.flush()
     before = {
         gp.team_id: (gp.style, gp.line_usage)
@@ -155,16 +166,17 @@ def test_rollover_preserves_gameplans(db):
 
 
 def test_set_user_team_does_not_change_gameplans(db):
-    season = create_or_reset_league(db, seed=320)
+    season = create_or_reset_league(db, seed=320); _setup_manager(db)
     db.flush()
     before = {
         gp.team_id: (gp.style, gp.line_usage)
         for gp in db.query(TeamGameplan).all()
     }
     other = (
-        db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
     )
-    season.user_team_id = other.id
+    p = manager_profile_service.require_active_profile(db)
+    manager_profile_service.set_team(db, p.id, other.id)
     db.flush()
     after = {
         gp.team_id: (gp.style, gp.line_usage)
@@ -174,16 +186,16 @@ def test_set_user_team_does_not_change_gameplans(db):
 
 
 def test_service_validation_directly(db):
-    season = create_or_reset_league(db, seed=321)
+    season = create_or_reset_league(db, seed=321); _setup_manager(db)
     db.flush()
     with pytest.raises(GameplanInvalid):
         gameplan_service.update_user_team_gameplan(
-            db, season.user_team_id, "kamikaze", "balanced"
+            db, manager_profile_service.current_team_id(db), "kamikaze", "balanced"
         )
     with pytest.raises(TeamNotFound):
         gameplan_service.get_team_gameplan(db, 9999999)
     other = (
-        db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
     )
     with pytest.raises(NotUserTeam):
         gameplan_service.update_user_team_gameplan(

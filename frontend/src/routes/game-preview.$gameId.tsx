@@ -71,9 +71,6 @@ const Preview = () => {
   // Cumulative score up to and including the revealed period.
   const homeShown = d.home_goals_by_period.slice(0, revealed).reduce((a, b) => a + b, 0);
   const awayShown = d.away_goals_by_period.slice(0, revealed).reduce((a, b) => a + b, 0);
-  const homeShotsShown = d.home_shots_by_period.slice(0, revealed).reduce((a, b) => a + b, 0);
-  const awayShotsShown = d.away_shots_by_period.slice(0, revealed).reduce((a, b) => a + b, 0);
-
   const fullyRevealed = isSimmed && revealed >= totalPeriods;
 
   return (

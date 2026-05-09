@@ -2,9 +2,10 @@ import pytest
 
 from app.errors import LeagueNotFound, TeamNotFound
 from app.models import Game, Standing, Team
+from app.services import manager_profile_service
 from app.services.generation.schedule import GAMES_PER_TEAM
 from app.services.generation.teams import TEAM_COUNT
-from app.services.league_service import create_or_reset_league, get_league, set_user_team
+from app.services.league_service import create_or_reset_league, get_league
 
 EXPECTED_GAMES = TEAM_COUNT * GAMES_PER_TEAM // 2
 
@@ -12,7 +13,6 @@ EXPECTED_GAMES = TEAM_COUNT * GAMES_PER_TEAM // 2
 def test_create_league_full_setup(db):
     s = create_or_reset_league(db, seed=42)
     assert s.id is not None
-    assert s.user_team_id is not None
     assert db.query(Team).count() == TEAM_COUNT
     assert db.query(Game).count() == EXPECTED_GAMES
     assert db.query(Standing).count() == TEAM_COUNT
@@ -33,7 +33,8 @@ def test_create_resets_existing(db):
     assert db.query(Team).count() == TEAM_COUNT
 
 
-def test_set_user_team_validates(db):
+def test_manager_set_team_validates(db):
     create_or_reset_league(db, seed=1)
+    p = manager_profile_service.create_profile(db, name="Coach")
     with pytest.raises(TeamNotFound):
-        set_user_team(db, team_id=99999)
+        manager_profile_service.set_team(db, p.id, team_id=99999)

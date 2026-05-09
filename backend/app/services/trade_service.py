@@ -282,7 +282,7 @@ def propose_trade(
     offered_player_id: int,
 ) -> dict:
     season = _require_active_season(db)
-    user_team_id = season.user_team_id
+    user_team_id = _current_user_team_id(db)
     if user_team_id is None:
         raise NotUserTeam()
 

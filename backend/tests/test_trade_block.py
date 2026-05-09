@@ -1,10 +1,14 @@
 from app.models import Goalie, Skater, Team
 from app.services.league_service import create_or_reset_league
 from app.services.trade_service import compute_trade_block
+from app.services import manager_profile_service
 
 
 def _setup(db, seed=42):
     season = create_or_reset_league(db, seed=seed)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    first = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, first.id)
     db.flush()
     return season
 
@@ -13,7 +17,7 @@ def test_block_excludes_user_team(db):
     season = _setup(db)
     block = compute_trade_block(db)
     assert block, "expected at least one trade-block entry across AI teams"
-    assert all(e["team_id"] != season.user_team_id for e in block)
+    assert all(e["team_id"] != manager_profile_service.current_team_id(db) for e in block)
 
 
 def test_block_returns_at_most_3_per_team(db):

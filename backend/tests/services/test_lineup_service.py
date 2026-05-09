@@ -5,6 +5,7 @@ from app.models import Lineup, Skater, Team
 from app.schemas.lineup import LineupSlots
 from app.services.league_service import create_or_reset_league
 from app.services.lineup_service import update_lineup
+from app.services import manager_profile_service
 
 
 def _slots_from(lu: Lineup) -> LineupSlots:
@@ -14,15 +15,15 @@ def _slots_from(lu: Lineup) -> LineupSlots:
 
 
 def test_update_accepts_default(db):
-    season = create_or_reset_league(db, seed=1)
-    team_id = season.user_team_id
+    season = create_or_reset_league(db, seed=1); p = manager_profile_service.create_profile(db, name="Coach"); manager_profile_service.set_team(db, p.id, db.query(Team).order_by(Team.id).first().id)
+    team_id = manager_profile_service.current_team_id(db)
     lu = db.query(Lineup).filter_by(team_id=team_id).one()
     update_lineup(db, team_id, _slots_from(lu))
 
 
 def test_duplicate_skater_rejected(db):
-    season = create_or_reset_league(db, seed=1)
-    team_id = season.user_team_id
+    season = create_or_reset_league(db, seed=1); p = manager_profile_service.create_profile(db, name="Coach"); manager_profile_service.set_team(db, p.id, db.query(Team).order_by(Team.id).first().id)
+    team_id = manager_profile_service.current_team_id(db)
     lu = db.query(Lineup).filter_by(team_id=team_id).one()
     s = _slots_from(lu).model_copy(update={"line2_c_id": lu.line1_c_id})
     with pytest.raises(LineupSlotConflict):
@@ -30,8 +31,8 @@ def test_duplicate_skater_rejected(db):
 
 
 def test_wrong_position_rejected(db):
-    season = create_or_reset_league(db, seed=1)
-    team_id = season.user_team_id
+    season = create_or_reset_league(db, seed=1); p = manager_profile_service.create_profile(db, name="Coach"); manager_profile_service.set_team(db, p.id, db.query(Team).order_by(Team.id).first().id)
+    team_id = manager_profile_service.current_team_id(db)
     lu = db.query(Lineup).filter_by(team_id=team_id).one()
     # Swap an LW slot with a C — both end up in the wrong position slot, no duplicates.
     s = _slots_from(lu).model_copy(update={
@@ -43,11 +44,11 @@ def test_wrong_position_rejected(db):
 
 
 def test_other_team_skater_rejected(db):
-    season = create_or_reset_league(db, seed=1)
+    season = create_or_reset_league(db, seed=1); p = manager_profile_service.create_profile(db, name="Coach"); manager_profile_service.set_team(db, p.id, db.query(Team).order_by(Team.id).first().id)
     teams = db.query(Team).all()
-    other_team = next(t for t in teams if t.id != season.user_team_id)
+    other_team = next(t for t in teams if t.id != manager_profile_service.current_team_id(db))
     other_lw = db.query(Skater).filter_by(team_id=other_team.id, position="LW").first()
-    lu = db.query(Lineup).filter_by(team_id=season.user_team_id).one()
+    lu = db.query(Lineup).filter_by(team_id=manager_profile_service.current_team_id(db)).one()
     s = _slots_from(lu).model_copy(update={"line1_lw_id": other_lw.id})
     with pytest.raises(LineupInvalid):
-        update_lineup(db, season.user_team_id, s)
+        update_lineup(db, manager_profile_service.current_team_id(db), s)

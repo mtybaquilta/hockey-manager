@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Season, Team
-from app.schemas.league import CreateLeagueIn, LeagueOut, SetUserTeamIn, TeamSummary
-from app.services import league_service
+from app.schemas.league import CreateLeagueIn, LeagueOut, TeamSummary
+from app.services import league_service, manager_profile_service
 
 router = APIRouter(prefix="/league", tags=["league"])
 
@@ -14,7 +14,7 @@ def _serialize(db: Session, season: Season) -> LeagueOut:
     return LeagueOut(
         season_id=season.id,
         seed=season.seed,
-        user_team_id=season.user_team_id,
+        user_team_id=manager_profile_service.current_team_id(db),
         current_matchday=season.current_matchday,
         status=season.status,
         phase=season.phase,
@@ -34,10 +34,3 @@ def create(payload: CreateLeagueIn, db: Session = Depends(get_db)):
 @router.get("", response_model=LeagueOut)
 def get(db: Session = Depends(get_db)):
     return _serialize(db, league_service.get_league(db))
-
-
-@router.put("/user-team", response_model=LeagueOut)
-def put_user_team(payload: SetUserTeamIn, db: Session = Depends(get_db)):
-    season = league_service.set_user_team(db, payload.team_id)
-    db.commit()
-    return _serialize(db, season)

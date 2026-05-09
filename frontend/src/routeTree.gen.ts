@@ -18,7 +18,10 @@ import { Route as PlayoffsRouteImport } from './routes/playoffs'
 import { Route as FreeAgentsRouteImport } from './routes/free-agents'
 import { Route as DevelopmentSummaryRouteImport } from './routes/development-summary'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ManagerIndexRouteImport } from './routes/manager.index'
 import { Route as TeamTeamIdRouteImport } from './routes/team.$teamId'
+import { Route as ManagerCreateRouteImport } from './routes/manager.create'
+import { Route as ManagerChooseTeamRouteImport } from './routes/manager.choose-team'
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId'
 import { Route as GamePreviewGameIdRouteImport } from './routes/game-preview.$gameId'
 import { Route as TeamTeamIdLineupRouteImport } from './routes/team.$teamId.lineup'
@@ -70,9 +73,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManagerIndexRoute = ManagerIndexRouteImport.update({
+  id: '/manager/',
+  path: '/manager/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeamTeamIdRoute = TeamTeamIdRouteImport.update({
   id: '/team/$teamId',
   path: '/team/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagerCreateRoute = ManagerCreateRouteImport.update({
+  id: '/manager/create',
+  path: '/manager/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagerChooseTeamRoute = ManagerChooseTeamRouteImport.update({
+  id: '/manager/choose-team',
+  path: '/manager/choose-team',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GameGameIdRoute = GameGameIdRouteImport.update({
@@ -113,7 +131,10 @@ export interface FileRoutesByFullPath {
   '/trade-block': typeof TradeBlockRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/manager/choose-team': typeof ManagerChooseTeamRoute
+  '/manager/create': typeof ManagerCreateRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/manager/': typeof ManagerIndexRoute
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
   '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
@@ -130,7 +151,10 @@ export interface FileRoutesByTo {
   '/trade-block': typeof TradeBlockRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/manager/choose-team': typeof ManagerChooseTeamRoute
+  '/manager/create': typeof ManagerCreateRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/manager': typeof ManagerIndexRoute
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
   '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
@@ -148,7 +172,10 @@ export interface FileRoutesById {
   '/trade-block': typeof TradeBlockRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
+  '/manager/choose-team': typeof ManagerChooseTeamRoute
+  '/manager/create': typeof ManagerCreateRoute
   '/team/$teamId': typeof TeamTeamIdRouteWithChildren
+  '/manager/': typeof ManagerIndexRoute
   '/player/goalie/$id': typeof PlayerGoalieIdRoute
   '/player/skater/$id': typeof PlayerSkaterIdRoute
   '/team/$teamId/lineup': typeof TeamTeamIdLineupRoute
@@ -167,7 +194,10 @@ export interface FileRouteTypes {
     | '/trade-block'
     | '/game-preview/$gameId'
     | '/game/$gameId'
+    | '/manager/choose-team'
+    | '/manager/create'
     | '/team/$teamId'
+    | '/manager/'
     | '/player/goalie/$id'
     | '/player/skater/$id'
     | '/team/$teamId/lineup'
@@ -184,7 +214,10 @@ export interface FileRouteTypes {
     | '/trade-block'
     | '/game-preview/$gameId'
     | '/game/$gameId'
+    | '/manager/choose-team'
+    | '/manager/create'
     | '/team/$teamId'
+    | '/manager'
     | '/player/goalie/$id'
     | '/player/skater/$id'
     | '/team/$teamId/lineup'
@@ -201,7 +234,10 @@ export interface FileRouteTypes {
     | '/trade-block'
     | '/game-preview/$gameId'
     | '/game/$gameId'
+    | '/manager/choose-team'
+    | '/manager/create'
     | '/team/$teamId'
+    | '/manager/'
     | '/player/goalie/$id'
     | '/player/skater/$id'
     | '/team/$teamId/lineup'
@@ -219,7 +255,10 @@ export interface RootRouteChildren {
   TradeBlockRoute: typeof TradeBlockRoute
   GamePreviewGameIdRoute: typeof GamePreviewGameIdRoute
   GameGameIdRoute: typeof GameGameIdRoute
+  ManagerChooseTeamRoute: typeof ManagerChooseTeamRoute
+  ManagerCreateRoute: typeof ManagerCreateRoute
   TeamTeamIdRoute: typeof TeamTeamIdRouteWithChildren
+  ManagerIndexRoute: typeof ManagerIndexRoute
   PlayerGoalieIdRoute: typeof PlayerGoalieIdRoute
   PlayerSkaterIdRoute: typeof PlayerSkaterIdRoute
 }
@@ -289,11 +328,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/manager/': {
+      id: '/manager/'
+      path: '/manager'
+      fullPath: '/manager/'
+      preLoaderRoute: typeof ManagerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/team/$teamId': {
       id: '/team/$teamId'
       path: '/team/$teamId'
       fullPath: '/team/$teamId'
       preLoaderRoute: typeof TeamTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manager/create': {
+      id: '/manager/create'
+      path: '/manager/create'
+      fullPath: '/manager/create'
+      preLoaderRoute: typeof ManagerCreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manager/choose-team': {
+      id: '/manager/choose-team'
+      path: '/manager/choose-team'
+      fullPath: '/manager/choose-team'
+      preLoaderRoute: typeof ManagerChooseTeamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/game/$gameId': {
@@ -358,7 +418,10 @@ const rootRouteChildren: RootRouteChildren = {
   TradeBlockRoute: TradeBlockRoute,
   GamePreviewGameIdRoute: GamePreviewGameIdRoute,
   GameGameIdRoute: GameGameIdRoute,
+  ManagerChooseTeamRoute: ManagerChooseTeamRoute,
+  ManagerCreateRoute: ManagerCreateRoute,
   TeamTeamIdRoute: TeamTeamIdRouteWithChildren,
+  ManagerIndexRoute: ManagerIndexRoute,
   PlayerGoalieIdRoute: PlayerGoalieIdRoute,
   PlayerSkaterIdRoute: PlayerSkaterIdRoute,
 }

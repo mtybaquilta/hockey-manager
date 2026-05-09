@@ -39,8 +39,9 @@ def _validate(style: str, line_usage: str) -> None:
 
 
 def _current_user_team_id(db: Session) -> int | None:
-    season = db.query(Season).order_by(Season.id.desc()).first()
-    return season.user_team_id if season else None
+    from app.services import manager_profile_service
+
+    return manager_profile_service.current_team_id(db)
 
 
 def get_team_gameplan(db: Session, team_id: int) -> TeamGameplan:

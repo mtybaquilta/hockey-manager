@@ -7,6 +7,7 @@ from app.api import (
     health,
     league,
     lineup,
+    manager,
     players,
     playoffs,
     schedule,
@@ -34,5 +35,6 @@ for r in (
     free_agents.router,
     trades.router,
     playoffs.router,
+    manager.router,
 ):
     api_router.include_router(r)

@@ -23,5 +23,3 @@ class LeagueOut(BaseModel):
     teams: list[TeamSummary]
 
 
-class SetUserTeamIn(BaseModel):
-    team_id: int

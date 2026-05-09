@@ -5,6 +5,7 @@ from app.main import app
 from app.models import Goalie, Lineup, Season, Skater, Team
 from app.services.league_service import create_or_reset_league
 from app.services.trade_service import compute_trade_block
+from app.services import manager_profile_service
 
 
 def _client(db):
@@ -17,6 +18,9 @@ def _client(db):
 
 def _setup(db, seed=42):
     season = create_or_reset_league(db, seed=seed)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    first = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, first.id)
     db.flush()
     return season
 
@@ -46,7 +50,7 @@ def test_get_trade_block_excludes_user_team(db):
         assert r.status_code == 200
         body = r.json()
         assert body
-        assert all(e["team_id"] != season.user_team_id for e in body)
+        assert all(e["team_id"] != manager_profile_service.current_team_id(db) for e in body)
     finally:
         app.dependency_overrides.pop(get_db, None)
 
@@ -77,11 +81,11 @@ def test_propose_with_own_team_rejected(db):
         client = _client(db)
         # both target and offered are user-team players
         own_a = (
-            db.query(Skater).filter(Skater.team_id == season.user_team_id).order_by(Skater.id).first()
+            db.query(Skater).filter(Skater.team_id == manager_profile_service.current_team_id(db)).order_by(Skater.id).first()
         )
         own_b = (
             db.query(Skater)
-            .filter(Skater.team_id == season.user_team_id, Skater.id != own_a.id)
+            .filter(Skater.team_id == manager_profile_service.current_team_id(db), Skater.id != own_a.id)
             .order_by(Skater.id)
             .first()
         )
@@ -106,7 +110,7 @@ def test_propose_free_agent_rejected(db):
         client = _client(db)
         fa = db.query(Skater).filter(Skater.team_id.is_(None)).first()
         own = (
-            db.query(Skater).filter(Skater.team_id == season.user_team_id).order_by(Skater.id).first()
+            db.query(Skater).filter(Skater.team_id == manager_profile_service.current_team_id(db)).order_by(Skater.id).first()
         )
         r = client.post(
             "/api/trades/propose",
@@ -128,7 +132,7 @@ def test_propose_target_not_on_block_rejected(db):
     try:
         client = _client(db)
         # Top forward on an AI team — almost certainly excluded as top-core.
-        ai = db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        ai = db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         ai_forwards = (
             db.query(Skater)
             .filter(Skater.team_id == ai.id, Skater.position.in_(("LW", "C", "RW")))
@@ -139,7 +143,7 @@ def test_propose_target_not_on_block_rejected(db):
         )
         top = ai_forwards[0]
         own = (
-            db.query(Skater).filter(Skater.team_id == season.user_team_id).order_by(Skater.id).first()
+            db.query(Skater).filter(Skater.team_id == manager_profile_service.current_team_id(db)).order_by(Skater.id).first()
         )
         r = client.post(
             "/api/trades/propose",
@@ -160,12 +164,12 @@ def test_propose_value_too_low_returns_soft_reject(db):
     season = _setup(db)
     try:
         client = _client(db)
-        ai = db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        ai = db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         target = _block_skater_for(db, ai.id)
         # Offer the lowest-OVR same-position user skater available.
         own_pool = (
             db.query(Skater)
-            .filter(Skater.team_id == season.user_team_id, Skater.position == target["position"])
+            .filter(Skater.team_id == manager_profile_service.current_team_id(db), Skater.position == target["position"])
             .all()
         )
         own_pool.sort(
@@ -189,7 +193,7 @@ def test_propose_value_too_low_returns_soft_reject(db):
             assert body["error_code"] == "TradeValueTooLow"
             db.expire_all()
             assert db.get(Skater, target["player_id"]).team_id == ai.id
-            assert db.get(Skater, weak.id).team_id == season.user_team_id
+            assert db.get(Skater, weak.id).team_id == manager_profile_service.current_team_id(db)
     finally:
         app.dependency_overrides.pop(get_db, None)
 
@@ -198,12 +202,12 @@ def test_propose_accepted_swaps_team_ids(db):
     season = _setup(db)
     try:
         client = _client(db)
-        ai = db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        ai = db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         target = _block_skater_for(db, ai.id)
         # Find a strong same-position user skater so the offer clears asking value.
         own_pool = (
             db.query(Skater)
-            .filter(Skater.team_id == season.user_team_id, Skater.position == target["position"])
+            .filter(Skater.team_id == manager_profile_service.current_team_id(db), Skater.position == target["position"])
             .all()
         )
         own_pool.sort(
@@ -223,7 +227,7 @@ def test_propose_accepted_swaps_team_ids(db):
         body = r.json()
         if body["accepted"]:
             db.expire_all()
-            assert db.get(Skater, target["player_id"]).team_id == season.user_team_id
+            assert db.get(Skater, target["player_id"]).team_id == manager_profile_service.current_team_id(db)
             assert db.get(Skater, strong.id).team_id == ai.id
             # Re-proposing the same target now hits TradeWithOwnTeamNotAllowed.
             r2 = client.post(
@@ -244,11 +248,11 @@ def test_propose_clears_lineup_slot_on_accept(db):
     season = _setup(db)
     try:
         client = _client(db)
-        ai = db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        ai = db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         target = _block_skater_for(db, ai.id)
         own_pool = (
             db.query(Skater)
-            .filter(Skater.team_id == season.user_team_id, Skater.position == target["position"])
+            .filter(Skater.team_id == manager_profile_service.current_team_id(db), Skater.position == target["position"])
             .all()
         )
         own_pool.sort(
@@ -291,10 +295,10 @@ def test_propose_blocked_when_season_complete(db):
     season = _setup(db)
     try:
         client = _client(db)
-        ai = db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
+        ai = db.query(Team).filter(Team.id != manager_profile_service.current_team_id(db)).order_by(Team.id).first()
         target = _block_skater_for(db, ai.id)
         own = (
-            db.query(Skater).filter(Skater.team_id == season.user_team_id).order_by(Skater.id).first()
+            db.query(Skater).filter(Skater.team_id == manager_profile_service.current_team_id(db)).order_by(Skater.id).first()
         )
         # mark season complete
         s = db.query(Season).order_by(Season.id.desc()).first()

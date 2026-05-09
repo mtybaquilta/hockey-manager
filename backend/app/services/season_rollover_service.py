@@ -239,7 +239,6 @@ def start_next_season(db: Session) -> dict:
     new_year = season.year + 1
     new_season = Season(
         seed=new_seed,
-        user_team_id=season.user_team_id,
         current_matchday=1,
         status="active",
         phase="regular_season",

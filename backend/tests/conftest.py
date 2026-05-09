@@ -6,7 +6,22 @@ from sqlalchemy.orm import sessionmaker
 
 import app.models  # noqa: F401  (register tables on Base.metadata)
 from app.db import Base
+from app.models import Team
+from app.services import manager_profile_service
 from app.services.league_service import create_or_reset_league
+
+
+def _setup_default_manager(db) -> None:
+    """Test helper: create a manager profile and assign them to the first team.
+
+    Mirrors the pre-P1.4 implicit behavior where create_or_reset_league set
+    Season.user_team_id = teams[0].id. Tests that exercised that default
+    keep working.
+    """
+    p = manager_profile_service.create_profile(db, name="Coach Tester")
+    first_team = db.query(Team).order_by(Team.id).first()
+    if first_team is not None:
+        manager_profile_service.set_team(db, p.id, first_team.id)
 
 TEST_DB_URL = os.environ.get(
     "HM_TEST_DATABASE_URL",
@@ -42,6 +57,7 @@ def db(engine):
 @pytest.fixture()
 def db_with_league(db):
     create_or_reset_league(db, seed=12345)
+    _setup_default_manager(db)
     return db
 
 
@@ -70,6 +86,7 @@ def db_factory(engine):
         S = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
         s = S()
         create_or_reset_league(s, seed=seed)
+        _setup_default_manager(s)
         s.commit()  # Release locks so drop_all on next call can proceed.
         sessions.append(s)
         return s

@@ -43,8 +43,9 @@ class PlayerNotOnTeam(DomainError):
 
 
 def _current_user_team_id(db: Session) -> int | None:
-    season = db.query(Season).order_by(Season.id.desc()).first()
-    return season.user_team_id if season else None
+    from app.services import manager_profile_service
+
+    return manager_profile_service.current_team_id(db)
 
 
 def _current_season_year(db: Session) -> int:

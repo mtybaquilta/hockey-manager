@@ -71,10 +71,9 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
     generate_schedule(rng, db, season.id, [t.id for t in teams])
     for t in teams:
         db.add(Standing(team_id=t.id, season_id=season.id))
-    season.user_team_id = teams[0].id
     db.flush()
     generate_gameplans_for_league(
-        rng, db, [t.id for t in teams], user_team_id=season.user_team_id
+        rng, db, [t.id for t in teams], user_team_id=None
     )
     return season
 
@@ -100,11 +99,3 @@ def get_league(db: Session) -> Season:
     return season
 
 
-def set_user_team(db: Session, team_id: int) -> Season:
-    season = get_league(db)
-    team = db.query(Team).filter_by(id=team_id).first()
-    if not team:
-        raise TeamNotFound(f"team {team_id} not in current league")
-    season.user_team_id = team.id
-    db.flush()
-    return season

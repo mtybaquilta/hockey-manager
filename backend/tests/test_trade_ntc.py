@@ -4,6 +4,7 @@ from app.db import get_db
 from app.main import app
 from app.models import Season, Skater
 from app.services import contract_service, trade_service
+from app.services import manager_profile_service
 
 
 def _client(db):
@@ -19,7 +20,7 @@ def test_trade_block_excludes_ntc_holders(db_with_league):
     season = db.query(Season).order_by(Season.id.desc()).first()
     sk = (
         db.query(Skater)
-        .filter(Skater.team_id.is_not(None), Skater.team_id != season.user_team_id)
+        .filter(Skater.team_id.is_not(None), Skater.team_id != manager_profile_service.current_team_id(db))
         .first()
     )
     c = contract_service.get_active_contract_for_skater(db, sk.id)
@@ -34,7 +35,7 @@ def test_trade_block_excludes_ntc_holders(db_with_league):
 def test_propose_trade_rejected_for_ntc(db_with_league):
     db = db_with_league
     season = db.query(Season).order_by(Season.id.desc()).first()
-    user_team_id = season.user_team_id
+    user_team_id = manager_profile_service.current_team_id(db)
 
     # Find a target on another team eligible for the trade block.
     block = trade_service.compute_trade_block(db)

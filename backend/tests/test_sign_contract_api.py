@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.db import get_db
 from app.main import app
 from app.models import Season, Skater
+from app.services import manager_profile_service
 
 
 def _client(db):
@@ -14,7 +15,7 @@ def _client(db):
 
 
 def _user_team_id(db) -> int:
-    return db.query(Season).order_by(Season.id.desc()).first().user_team_id
+    return manager_profile_service.current_team_id(db)
 
 
 def test_sign_skater_with_terms(db_with_league):
