@@ -41,11 +41,17 @@ const useInvalidateOnSettle = (teamId: number) => {
   };
 };
 
+export type SignTerms = {
+  length: number;
+  salary: number;
+  no_trade_clause: boolean;
+};
+
 export const useSignSkater = (teamId: number) => {
   const onSettle = useInvalidateOnSettle(teamId);
   return useMutation({
-    mutationFn: (skaterId: number) =>
-      api.post(`/api/teams/${teamId}/sign/skater/${skaterId}`),
+    mutationFn: ({ skaterId, terms }: { skaterId: number; terms: SignTerms }) =>
+      api.post(`/api/teams/${teamId}/sign/skater/${skaterId}`, terms),
     onSuccess: onSettle,
   });
 };
@@ -53,8 +59,8 @@ export const useSignSkater = (teamId: number) => {
 export const useSignGoalie = (teamId: number) => {
   const onSettle = useInvalidateOnSettle(teamId);
   return useMutation({
-    mutationFn: (goalieId: number) =>
-      api.post(`/api/teams/${teamId}/sign/goalie/${goalieId}`),
+    mutationFn: ({ goalieId, terms }: { goalieId: number; terms: SignTerms }) =>
+      api.post(`/api/teams/${teamId}/sign/goalie/${goalieId}`, terms),
     onSuccess: onSettle,
   });
 };

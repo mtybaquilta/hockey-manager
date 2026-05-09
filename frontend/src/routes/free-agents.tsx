@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Button } from "../components/Button";
 import { Shell } from "../components/Shell";
+import { SignContractModal } from "../components/SignContractModal";
 import { Table, Td, Th } from "../components/Table";
 import { attrClass } from "../lib/team-colors";
 import { useLeague } from "../queries/league";
@@ -12,7 +13,18 @@ import {
   useSignGoalie,
   useSignSkater,
 } from "../queries/free-agents";
-import type { FreeAgentFilters, Position } from "../api/types";
+import type { FreeAgentFilters, FreeAgentGoalie, FreeAgentSkater, Position } from "../api/types";
+
+const SALARY_FLOOR = 750;
+const SALARY_OVR_BASELINE = 60;
+const SALARY_OVR_FACTOR = 250;
+const SALARY_MIN = 750;
+const SALARY_MAX = 15000;
+
+const suggestedSalary = (ovr: number) => {
+  const raw = SALARY_FLOOR + SALARY_OVR_FACTOR * (ovr - SALARY_OVR_BASELINE);
+  return Math.max(SALARY_MIN, Math.min(SALARY_MAX, raw));
+};
 
 const POSITIONS: Position[] = ["LW", "C", "RW", "LD", "RD"];
 
@@ -23,6 +35,8 @@ const FreeAgentsPage = () => {
   const league = useLeague();
   const userTeamId = league.data?.user_team_id ?? null;
   const [tab, setTab] = useState<"skaters" | "goalies">("skaters");
+  const [signingSkater, setSigningSkater] = useState<FreeAgentSkater | null>(null);
+  const [signingGoalie, setSigningGoalie] = useState<FreeAgentGoalie | null>(null);
   const [filters, setFilters] = useState<FreeAgentFilters>({
     sort: "ovr",
     order: "desc",
@@ -171,7 +185,7 @@ const FreeAgentsPage = () => {
                   <Td className="num"><span className={`chip ${attrClass(s.physical)}`}>{s.physical}</span></Td>
                   <Td>
                     <Button
-                      onClick={() => signSkater.mutate(s.id)}
+                      onClick={() => setSigningSkater(s)}
                       disabled={!canSign || signSkater.isPending}
                     >
                       Sign
@@ -217,7 +231,7 @@ const FreeAgentsPage = () => {
                   <Td className="num"><span className={`chip ${attrClass(g.mental)}`}>{g.mental}</span></Td>
                   <Td>
                     <Button
-                      onClick={() => signGoalie.mutate(g.id)}
+                      onClick={() => setSigningGoalie(g)}
                       disabled={!canSign || signGoalie.isPending}
                     >
                       Sign
@@ -228,6 +242,35 @@ const FreeAgentsPage = () => {
             </tbody>
           </Table>
         </div>
+      )}
+
+      {signingSkater && userTeamId != null && (
+        <SignContractModal
+          player={{ id: signingSkater.id, name: signingSkater.name, ovr: signingSkater.ovr }}
+          defaultSalary={suggestedSalary(signingSkater.ovr)}
+          submitting={signSkater.isPending}
+          onClose={() => setSigningSkater(null)}
+          onSubmit={(terms) =>
+            signSkater.mutate(
+              { skaterId: signingSkater.id, terms },
+              { onSuccess: () => setSigningSkater(null) },
+            )
+          }
+        />
+      )}
+      {signingGoalie && userTeamId != null && (
+        <SignContractModal
+          player={{ id: signingGoalie.id, name: signingGoalie.name, ovr: signingGoalie.ovr }}
+          defaultSalary={suggestedSalary(signingGoalie.ovr)}
+          submitting={signGoalie.isPending}
+          onClose={() => setSigningGoalie(null)}
+          onSubmit={(terms) =>
+            signGoalie.mutate(
+              { goalieId: signingGoalie.id, terms },
+              { onSuccess: () => setSigningGoalie(null) },
+            )
+          }
+        />
       )}
     </Shell>
   );
