@@ -16,14 +16,16 @@ def test_full_season_via_api(db):
     try:
         client = TestClient(app)
         client.post("/api/league", json={"seed": 5})
-        # Sim through regular season + playoffs.
-        while True:
+        # Sim through regular season + playoffs into offseason.
+        for _ in range(5000):
             r = client.post("/api/season/advance")
             assert r.status_code == 200
+            if r.json().get("season_phase") == "offseason":
+                break
             if r.json()["season_status"] == "complete":
                 break
         status = client.get("/api/season/status").json()
-        assert status["status"] == "complete"
+        assert status["status"] == "active"
         standings = client.get("/api/standings").json()
         assert len(standings["rows"]) == TEAM_COUNT
         games = client.get("/api/schedule").json()["games"]

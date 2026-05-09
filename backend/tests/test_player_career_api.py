@@ -8,18 +8,23 @@ from app.services.advance_service import advance_matchday
 from app.services.league_service import create_or_reset_league
 
 
-def _play_through(db) -> None:
-    while advance_matchday(db)["season_status"] != "complete":
-        pass
+def _play_to_offseason(db) -> None:
+    for _ in range(5000):
+        res = advance_matchday(db)
+        if res["season_phase"] == "offseason":
+            return
+        if res["season_status"] == "complete":
+            return
+    raise AssertionError("did not reach offseason")
 
 
 def test_career_spans_two_seasons(db):
     create_or_reset_league(db, seed=314)
     db.flush()
-    _play_through(db)
+    _play_to_offseason(db)
     season_rollover_service.start_next_season(db)
     db.flush()
-    _play_through(db)
+    _play_to_offseason(db)
 
     skater = (
         db.query(Skater, SkaterGameStat)

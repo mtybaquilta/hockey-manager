@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.contract import ContractOut
+
 
 PlayerType = Literal["skater", "goalie"]
 
@@ -20,6 +22,7 @@ class TradeBlockEntryOut(BaseModel):
     ovr: int
     asking_value: int
     reason: str
+    contract: ContractOut | None = None
 
 
 class TradeProposalIn(BaseModel):

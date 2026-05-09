@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
 import { Button } from "../components/Button";
+import { ContractBadge } from "../components/ContractBadge";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { skaterOvr } from "../lib/roster-tags";
@@ -59,6 +60,10 @@ const TradeOfferPanel = ({
       {
         onSuccess: (res) => setResult({ ok: res.accepted, msg: res.message }),
         onError: (err: unknown) => {
+          if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "NoTradeClause") {
+            setResult({ ok: false, msg: "Trade rejected: no-trade clause." });
+            return;
+          }
           const m = err instanceof Error ? err.message : "Trade failed.";
           setResult({ ok: false, msg: m });
         },
@@ -121,6 +126,7 @@ const TradeBlockPage = () => {
   const block = useTradeBlock();
   const league = useLeague();
   const userTeamId = league.data?.user_team_id ?? null;
+  const currentYear = league.data?.year ?? 0;
   const [openFor, setOpenFor] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<"all" | PlayerKind>("all");
 
@@ -175,6 +181,7 @@ const TradeBlockPage = () => {
               <Th className="num">OVR</Th>
               <Th className="num">Asking</Th>
               <Th>Reason</Th>
+              <Th>Contract</Th>
               <Th />
             </tr>
           </thead>
@@ -194,6 +201,9 @@ const TradeBlockPage = () => {
                     </Td>
                     <Td className="num">{e.asking_value}</Td>
                     <Td style={{ color: "var(--ink-3)" }}>{e.reason}</Td>
+                    <Td>
+                      <ContractBadge contract={e.contract} currentYear={currentYear} />
+                    </Td>
                     <Td>
                       <Button
                         disabled={userTeamId == null}

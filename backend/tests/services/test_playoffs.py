@@ -10,8 +10,13 @@ from app.services.playoff_service import (
 
 
 def _run_to_complete(db) -> None:
-    while advance_matchday(db)["season_status"] != "complete":
-        pass
+    for _ in range(5000):
+        res = advance_matchday(db)
+        if res["season_phase"] == "offseason":
+            return
+        if res["season_status"] == "complete":
+            return
+    raise AssertionError("did not finish season")
 
 
 def _run_until_playoffs(db) -> None:
@@ -68,7 +73,7 @@ def test_full_playoffs_produces_champion_and_uses_4_rounds(db):
     create_or_reset_league(db, seed=13)
     _run_to_complete(db)
     season = db.query(Season).order_by(Season.id.desc()).one()
-    assert season.status == "complete"
+    assert season.phase == "offseason"
     assert season.champion_team_id is not None
 
     rounds = sorted({s.round for s in db.query(PlayoffSeries).all()})

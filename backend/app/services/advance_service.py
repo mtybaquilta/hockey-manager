@@ -257,6 +257,8 @@ def advance_matchday(db: Session) -> dict:
         raise LeagueNotFound("no active league")
     if season.status == "complete":
         raise SeasonAlreadyComplete("season already complete")
+    if season.phase == "offseason":
+        raise SeasonAlreadyComplete("season is in offseason; start the next season to continue")
 
     games = (
         db.query(Game)

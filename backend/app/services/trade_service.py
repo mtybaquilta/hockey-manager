@@ -70,6 +70,20 @@ def _require_active_season(db: Session) -> Season:
     return season
 
 
+def _contract_dict(c) -> dict | None:
+    if c is None:
+        return None
+    return {
+        "id": c.id,
+        "length": c.length,
+        "signed_season_year": c.signed_season_year,
+        "expires_after_year": c.expires_after_year,
+        "salary": c.salary,
+        "no_trade_clause": c.no_trade_clause,
+        "status": c.status,
+    }
+
+
 def _has_ntc(db: Session, player_type: str, player_id: int) -> bool:
     if player_type == "skater":
         c = contract_service.get_active_contract_for_skater(db, player_id)
@@ -170,6 +184,7 @@ def compute_trade_block(db: Session) -> list[dict]:
             ovr = _skater_ovr(s)
             age = age_from_birth_date(s.birth_date, season_year)
             score = age + (team_avg - ovr)
+            c = contract_service.get_active_contract_for_skater(db, s.id)
             entry = {
                 "player_type": "skater",
                 "player_id": s.id,
@@ -182,6 +197,7 @@ def compute_trade_block(db: Session) -> list[dict]:
                 "ovr": ovr,
                 "asking_value": ovr + _age_modifier(age),
                 "reason": _reason_for_skater(s, team_avg, pos_counts.get(s.position, 0), age),
+                "contract": _contract_dict(c),
             }
             candidates.append((score, s.id, entry))
         for g in goalies:
@@ -192,6 +208,7 @@ def compute_trade_block(db: Session) -> list[dict]:
             ovr = _goalie_ovr(g)
             age = age_from_birth_date(g.birth_date, season_year)
             score = age + (team_avg_g - ovr)
+            c = contract_service.get_active_contract_for_goalie(db, g.id)
             entry = {
                 "player_type": "goalie",
                 "player_id": g.id,
@@ -204,6 +221,7 @@ def compute_trade_block(db: Session) -> list[dict]:
                 "ovr": ovr,
                 "asking_value": ovr + _age_modifier(age),
                 "reason": _reason_for_goalie(g, team_avg_g, age),
+                "contract": _contract_dict(c),
             }
             candidates.append((score, g.id, entry))
 

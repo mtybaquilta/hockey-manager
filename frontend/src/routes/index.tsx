@@ -5,6 +5,7 @@ import { Logo, TeamRow } from "../components/Logo";
 import { ResultBadge } from "../components/ResultBadge";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
+import { useStartNextSeason } from "../queries/development";
 import { useLeague } from "../queries/league";
 import { useSchedule } from "../queries/schedule";
 import { useAdvance, useSeasonStatus, useSimTo } from "../queries/season";
@@ -46,7 +47,9 @@ const Dashboard = () => {
   const top5 = standings.data.rows.slice(0, 5);
   const diff = myRow ? myRow.goals_for - myRow.goals_against : 0;
   const seasonComplete = status.data?.status === "complete";
-  const inPlayoffs = league.data.phase === "playoffs" && !seasonComplete;
+  const inOffseason = league.data.phase === "offseason";
+  const inPlayoffs = league.data.phase === "playoffs" && !seasonComplete && !inOffseason;
+  const startNext = useStartNextSeason();
 
   const onAdvance = () =>
     advance.mutate(undefined, {
@@ -62,7 +65,9 @@ const Dashboard = () => {
       <div className="section-h">
         <h1>Dashboard</h1>
         <span className="sub">
-          {me.name} · '25-26 {inPlayoffs ? "Playoffs" : "Regular Season"}
+          {me.name} · Year {league.data.year}
+          {" · "}
+          {inOffseason ? "Offseason" : inPlayoffs ? "Playoffs" : "Regular Season"}
         </span>
         <div style={{ flex: 1 }} />
         {inPlayoffs && (
@@ -74,6 +79,18 @@ const Dashboard = () => {
           <Link to="/season-complete" className="btn btn-primary">
             Season complete →
           </Link>
+        ) : inOffseason ? (
+          <button
+            className="btn btn-primary"
+            disabled={startNext.isPending}
+            onClick={() =>
+              startNext.mutate(undefined, {
+                onSuccess: (res) => nav({ to: "/development-summary", search: { season_id: res.new_season_id } }),
+              })
+            }
+          >
+            {startNext.isPending ? "Starting…" : "Start New Season →"}
+          </button>
         ) : (
           <button className="btn btn-primary" disabled={advance.isPending} onClick={onAdvance}>
             {advance.isPending
@@ -85,29 +102,54 @@ const Dashboard = () => {
         )}
       </div>
 
+      {inOffseason && (
+        <div
+          className="card"
+          style={{
+            padding: "14px 18px",
+            marginBottom: 14,
+            borderLeft: "3px solid #b45309",
+            background: "rgba(245, 158, 11, 0.08)",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Offseason</div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
+            The season is over. Sign free agents, then start the next season when you're ready.
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
-        <div className="next-card">
-          <div className="label">Next Game · Matchday {next?.matchday ?? "—"}</div>
-          {next && oppT ? (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
-                <Logo teamId={oppT.id} size={44} />
-                <div>
-                  <div className="opp">
-                    {isAway ? "@ " : "vs "}
-                    {oppT.name}
-                  </div>
-                  <div className="when">
-                    {oppT.abbreviation}
-                    {oppRow ? ` · ${oppRow.wins}-${oppRow.losses}-${oppRow.ot_losses}` : ""}
-                  </div>
+        {next && oppT ? (
+          <Link
+            to="/game-preview/$gameId"
+            params={{ gameId: String(next.id) }}
+            className="next-card"
+            style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
+          >
+            <div className="label">Next Game · Matchday {next.matchday}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
+              <Logo teamId={oppT.id} size={44} />
+              <div>
+                <div className="opp">
+                  {isAway ? "@ " : "vs "}
+                  {oppT.name}
+                </div>
+                <div className="when">
+                  {oppT.abbreviation}
+                  {oppRow ? ` · ${oppRow.wins}-${oppRow.losses}-${oppRow.ot_losses}` : ""}
                 </div>
               </div>
-            </>
-          ) : (
+              <div style={{ flex: 1 }} />
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Preview →</div>
+            </div>
+          </Link>
+        ) : (
+          <div className="next-card">
+            <div className="label">Next Game · Matchday —</div>
             <div style={{ marginTop: 10, color: "rgba(255,255,255,.7)" }}>No upcoming games.</div>
-          )}
-        </div>
+          </div>
+        )}
         <div className="k-stat">
           <div className="lbl">Record</div>
           <div className="val">
@@ -165,14 +207,18 @@ const Dashboard = () => {
               className="btn btn-primary"
               disabled={simTo.isPending}
               onClick={() =>
-                simTo.mutate(undefined, {
+                simTo.mutate(inPlayoffs ? {} : { stopAtPlayoffs: true }, {
                   onSuccess: (r) => {
                     if (r.season_status === "complete") nav({ to: "/season-complete" });
                   },
                 })
               }
             >
-              {simTo.isPending ? "Simulating…" : "Sim to End of Season"}
+              {simTo.isPending
+                ? "Simulating…"
+                : inPlayoffs
+                  ? "Sim Rest of Playoffs"
+                  : "Sim to End of Regular Season"}
             </button>
           </div>
         </Card>

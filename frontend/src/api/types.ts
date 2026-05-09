@@ -289,6 +289,7 @@ export interface TradeBlockEntry {
   ovr: number;
   asking_value: number;
   reason: string;
+  contract?: Contract | null;
 }
 
 export interface TradeProposalRequest {

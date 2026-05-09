@@ -38,14 +38,15 @@ def test_full_regular_season_transitions_to_playoffs(db):
     )
 
 
-def test_full_season_runs_to_complete_through_playoffs(db):
+def test_full_season_runs_to_offseason_through_playoffs(db):
     create_or_reset_league(db, seed=2)
-    while True:
+    for _ in range(5000):
         res = advance_matchday(db)
-        if res["season_status"] == "complete":
+        if res["season_phase"] == "offseason":
             break
     season = db.query(Season).one()
-    assert season.status == "complete"
+    assert season.phase == "offseason"
+    assert season.status == "active"
     assert season.champion_team_id is not None
     assert (
         db.query(Game).filter_by(status="simulated", phase="regular_season").count()
