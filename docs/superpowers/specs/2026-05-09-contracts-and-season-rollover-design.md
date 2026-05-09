@@ -36,18 +36,21 @@ See the deferred table at the end. Notably out of scope: salary cap, RFA/UFA, re
 | `length` | int | Original deal length in years; immutable. |
 | `signed_season_year` | int | `season.year` at signing. |
 | `expires_after_year` | int | Last season covered. Initially `signed_season_year + length - 1`; stored (not computed) so future extensions can mutate it. |
-| `salary` | int | Per-year base salary, integer (treat as "thousands" for display, e.g. `1500` → "$1.5M"). |
+| `salary` | int | Per-year base salary, integer in "thousands" for display (e.g. `8250` → "$8.25M"). Salaries are intentionally abstract: no cap consumes them yet, so the scale is tuned for NHL-like UI flavor and is free to change in the cap spec. |
 | `no_trade_clause` | bool, default false | |
+| `status` | enum: `active` \| `expired` \| `terminated` | Lifecycle state. Drives "is this player a FA" without depending on year math at query sites. |
+| `terminated_season_year` | int, nullable | The `season.year` at which `status` flipped to `terminated` (release). Null otherwise. |
 | `created_at` | timestamp | |
 
 **Constraints:**
 - CHECK: exactly one of `skater_id` / `goalie_id` is non-null.
-- Application-enforced "one active contract per player" rule: at insert time, the sign/initial-generation code asserts no existing contract with `expires_after_year >= season.year` for that player. Backed by a regular index on `(skater_id, expires_after_year)` and `(goalie_id, expires_after_year)` for query performance, not as a uniqueness constraint. Old expired contracts stay as history with no special handling.
+- **Partial unique index** `WHERE status = 'active'` on `skater_id`, and a second on `goalie_id`. DB-enforced: a player can have at most one active contract. Postgres handles partial unique indexes on a constant predicate cleanly.
+- Status transitions: `active → expired` (rollover, via `expires_after_year < new_year`); `active → terminated` (release). `expired` and `terminated` are terminal — historical contracts are immutable.
 
 ### Changes to `skater` / `goalie`
 
 - **Add** `birth_date: Date NOT NULL`.
-- **Drop** `age` column. `age` becomes a SQLAlchemy hybrid/Python computed property: `current_season.year - birth_date.year` (no month adjustment in v1; can refine later if needed).
+- **Drop** `age` column. Age is **computed at the service/API boundary** with an explicit `season.year` argument: `def age(player, season_year) -> int: return season_year - player.birth_date.year`. No global "current season" implicit lookup, no SQLAlchemy hybrid property — historical views (e.g. a player's age in season 2026 vs 2028) remain correct because the caller passes the relevant year.
 - Migration backfills `birth_date` for existing rows: `year = current_season.year - old_age`, month and day random from a deterministic seed (so re-running the migration yields the same dates).
 
 ### Changes to `season`
@@ -55,9 +58,17 @@ See the deferred table at the end. Notably out of scope: salary cap, RFA/UFA, re
 - **Add** `year: int NOT NULL`. Existing rows backfill to `2025`.
 - **Allowed `phase` values**: existing values plus new `"offseason"`. No schema change if `phase` is a free-form string column; otherwise update the enum.
 
+### Status / phase semantics
+
+To avoid confusion as `offseason` is introduced:
+
+- `season.status` describes the **season container** lifecycle: `active` = this is the season we're operating on; `complete` = closed, archived (set when rollover creates the next season).
+- `season.phase` describes **what's happening inside the active season**: `regular_season` (matchdays running), `playoffs` (bracket running), `offseason` (between playoffs and the next season's rollover).
+- `phase = "offseason"` with `status = "active"` is the **expected** state between champion-crowning and Start-New-Season. It does *not* mean regular-season games are active.
+
 ### "Free agent" definition
 
-Unchanged: `team_id IS NULL` ⇔ FA. Contracts add an extension: a FA has no *active* contract row. When signed, a new contract row is created.
+Unchanged: `team_id IS NULL` ⇔ FA. Equivalently and more directly: a FA is a player with no contract whose `status = 'active'`. The two conditions are kept in sync by every code path that sets one (sign, release, rollover).
 
 ---
 
@@ -70,7 +81,7 @@ For each rostered skater and goalie:
 1. **Length** drawn from weighted distribution: 1y=15%, 2y=30%, 3y=25%, 4y=20%, 5y=10%. Constants live in a single config module.
 2. **`signed_season_year`** drawn uniformly from `[season.year - length + 1, season.year]` so a deal might be in any year of its term at league start. Yields stagger: ~1/length of contracts expire each future year.
 3. **`expires_after_year`** = `signed_season_year + length - 1`.
-4. **Salary** = `clamp(salary_floor + ovr_factor * (ovr - ovr_baseline), salary_min, salary_max)`. Initial constants: `salary_floor=500`, `ovr_baseline=60`, `ovr_factor=80`, `salary_min=400`, `salary_max=12000`. A 90 OVR earns ~2900 ("$2.9M"); a 60 OVR earns ~500.
+4. **Salary** = `clamp(salary_floor + ovr_factor * (ovr - ovr_baseline), salary_min, salary_max)`. Initial constants: `salary_floor=750`, `ovr_baseline=60`, `ovr_factor=250`, `salary_min=750`, `salary_max=15000`. A 90 OVR earns ~8250 ("$8.25M"); a 60 OVR earns ~750 ("$0.75M", roughly a league-minimum analog); the cap headroom (~$15M) leaves room for star deals. Numbers are abstract units in "thousands"; no cap consumes them yet, so the scale is free to change when the cap spec lands.
 5. **NTC** = `false`. NTC is granted in negotiations, which v1 doesn't model.
 
 FA pool players get **no contract row**. Birth dates generated alongside players from the same league seed (`birth_year = league_start_year - target_age`, month and day random).
@@ -94,7 +105,7 @@ FA pool players get **no contract row**. Birth dates generated alongside players
 Validation:
 - `length` ∈ [1, 8].
 - `salary` ∈ [`salary_min`, `salary_max`].
-- Player is currently a FA (`team_id IS NULL` and no active contract). Else 409.
+- Player is currently a FA (`team_id IS NULL` and no contract with `status = 'active'`). Else 409.
 - Caller owns the team (existing rule).
 
 Behavior on success (one transaction):
@@ -144,7 +155,13 @@ Net effect: long-term, under-market deals are mild assets; short-term, over-mark
 
 ### Release behavior
 
-When a player is released, their active contract row is **deleted**. No buyout cost (buyouts are a cap-era feature). Document this in the release confirm modal copy: "This will delete the player's active contract."
+Release **preserves history**. On release:
+
+1. Set `player.team_id = NULL`.
+2. Find the player's `active` contract; flip `status = 'terminated'`, set `terminated_season_year = season.year`.
+3. Clear lineup slots referencing them (mirrors the existing flow).
+
+No buyout cost (buyouts are a cap-era feature). Release modal copy: "Releasing this player ends their contract immediately. Contract history is kept for the record."
 
 ---
 
@@ -166,7 +183,7 @@ Behavior (one transaction):
 
 1. Mark current season `status = "complete"`.
 2. Create new `Season` row: `year = old.year + 1`, `current_matchday = 1`, `phase = "regular_season"`, `status = "active"`, `seed` derived from `(old.seed, new.year)`.
-3. **Tick contracts:** for every contract where `expires_after_year < new_season.year`, the player is now a FA — set `team_id = NULL` on the player and clear lineup slots referencing them (mirrors release flow). Contract row stays as history.
+3. **Tick contracts:** for every `active` contract where `expires_after_year < new_season.year`, flip `status = 'expired'`. The player now has no active contract — set `team_id = NULL` and clear lineup slots referencing them (mirrors release flow). Contract rows stay as history (status = `expired`).
 4. **Aging** is implicit via the computed `age` property (`new_season.year - birth_date.year`). No per-row update.
 5. Generate schedule for new season (existing schedule generator, new season + seed).
 6. Create fresh `Standing` rows for every team for the new season.
@@ -193,7 +210,7 @@ The `phase = "offseason"` precondition plus the immediate `status = "complete"` 
 | Player detail page | Contract section: length, signed year, expires year, salary, NTC |
 | `/free-agents` | Sign button opens modal (length / salary / NTC) instead of one-click |
 | Roster page | Columns or tooltip showing years remaining, salary, NTC |
-| Release confirm modal | Copy: "This will delete the player's active contract" |
+| Release confirm modal | Copy: "Releasing this player ends their contract immediately. Contract history is kept for the record." |
 | `/trade-block` | Show contract terms on each candidate; NTC holders excluded server-side |
 | Trade rejection | Surface `"no-trade clause"` reason text |
 | Season-complete / dashboard | "Start New Season" button when `phase === "offseason"` |
@@ -205,9 +222,10 @@ The `phase = "offseason"` precondition plus the immediate `status = "complete"` 
 
 ### Migration / model
 
-- Backfill: every existing skater/goalie has non-null `birth_date`; computed `age` matches old stored value at the time of migration.
+- Backfill: every existing skater/goalie has non-null `birth_date`; `age(player, current_season.year)` matches old stored value at migration time.
 - CHECK constraint: contract row with both or neither of `skater_id` / `goalie_id` rejected.
-- Active-contract uniqueness: cannot insert two overlapping active contracts for the same player.
+- Partial unique index: cannot insert two `active` contracts for the same player; *can* have multiple `expired` / `terminated` rows alongside one `active`.
+- Status state machine: `active → expired` and `active → terminated` allowed; `expired`/`terminated` rows are not mutated by any code path.
 
 ### Generation (deterministic)
 
@@ -232,13 +250,14 @@ The `phase = "offseason"` precondition plus the immediate `status = "complete"` 
 ### Rollover
 
 - Phase transitions playoffs → offseason → regular_season (next year).
-- `season.year` increments; computed ages increment by 1.
-- Players with `expires_after_year < new_year` become FAs; lineup slots cleared.
-- Players with remaining years stay rostered with correct `years_remaining`.
+- `season.year` increments; `age(player, new_year)` increments by 1 for every player.
+- Players with `expires_after_year < new_year`: contract flipped to `expired`, player becomes FA, lineup slots cleared.
+- Players with remaining years stay rostered with correct `years_remaining`; their contract stays `active`.
+- Released-this-season players: their `terminated` contract is untouched by rollover.
 - Double-rollover blocked (409).
 - Calling rollover before offseason blocked (409).
 - New season has fresh schedule, standings, trade-block.
-- Prior season's stats and games untouched.
+- Prior season's stats, games, and historical contract rows untouched.
 
 ### Integration
 
