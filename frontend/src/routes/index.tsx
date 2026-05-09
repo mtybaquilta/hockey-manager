@@ -20,6 +20,7 @@ const Dashboard = () => {
   const status = useSeasonStatus();
   const advance = useAdvance();
   const simTo = useSimTo();
+  const startNext = useStartNextSeason();
   const [simTarget, setSimTarget] = useState<string>("");
   const nav = useNavigate();
 
@@ -49,7 +50,6 @@ const Dashboard = () => {
   const seasonComplete = status.data?.status === "complete";
   const inOffseason = league.data.phase === "offseason";
   const inPlayoffs = league.data.phase === "playoffs" && !seasonComplete && !inOffseason;
-  const startNext = useStartNextSeason();
 
   const onAdvance = () =>
     advance.mutate(undefined, {
