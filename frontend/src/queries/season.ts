@@ -31,13 +31,25 @@ export interface SimToResponse {
   season_status: "active" | "complete";
 }
 
+export interface SimToOptions {
+  matchday?: number;
+  stopAtPlayoffs?: boolean;
+}
+
 export const useSimTo = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (matchday?: number) =>
-      api.post<SimToResponse>(
-        matchday !== undefined ? `/api/season/sim-to?matchday=${matchday}` : "/api/season/sim-to"
-      ),
+    mutationFn: (opts?: number | SimToOptions) => {
+      const o: SimToOptions =
+        typeof opts === "number" ? { matchday: opts } : opts ?? {};
+      const params = new URLSearchParams();
+      if (o.matchday !== undefined) params.set("matchday", String(o.matchday));
+      if (o.stopAtPlayoffs) params.set("stop_at_playoffs", "true");
+      const qs = params.toString();
+      return api.post<SimToResponse>(
+        qs ? `/api/season/sim-to?${qs}` : "/api/season/sim-to"
+      );
+    },
     onSuccess: () => {
       qc.invalidateQueries();
     },
