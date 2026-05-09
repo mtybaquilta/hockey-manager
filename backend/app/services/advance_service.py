@@ -73,25 +73,95 @@ def _to_sim_goalie(g: Goalie) -> SimGoalie:
     )
 
 
+_SKATER_POS_BY_SLOT: dict[str, str] = {
+    "line1_lw_id": "LW", "line2_lw_id": "LW", "line3_lw_id": "LW", "line4_lw_id": "LW",
+    "line1_c_id": "C", "line2_c_id": "C", "line3_c_id": "C", "line4_c_id": "C",
+    "line1_rw_id": "RW", "line2_rw_id": "RW", "line3_rw_id": "RW", "line4_rw_id": "RW",
+    "pair1_ld_id": "LD", "pair2_ld_id": "LD", "pair3_ld_id": "LD",
+    "pair1_rd_id": "RD", "pair2_rd_id": "RD", "pair3_rd_id": "RD",
+}
+
+
 def _build_lineup(db: Session, team_id: int) -> SimTeamLineup:
+    """Build a SimTeamLineup, resolving any missing slot ids (None) by falling
+    back to the next-best roster skater at the same position, then to any
+    unused skater on the team. As a last resort, the slot reuses an already-
+    placed skater so the simulator always has a full lineup. This makes the
+    sim resilient to partially-saved lineups after expirations or trades.
+    """
     lu = db.query(Lineup).filter_by(team_id=team_id).one()
-    skater_ids = [getattr(lu, c) for trio in LINE_FWD_SLOTS for c in trio] + [
-        getattr(lu, c) for pair in PAIR_DEF_SLOTS for c in pair
-    ]
-    skaters = {s.id: s for s in db.query(Skater).filter(Skater.id.in_(skater_ids)).all()}
+    roster = db.query(Skater).filter_by(team_id=team_id).all()
+    by_pos: dict[str, list[Skater]] = {}
+    for s in roster:
+        by_pos.setdefault(s.position, []).append(s)
+    for pool in by_pos.values():
+        pool.sort(
+            key=lambda s: -(s.skating + s.shooting + s.passing + s.defense + s.physical)
+        )
+    by_id = {s.id: s for s in roster}
+
+    used: set[int] = set()
+    resolved: dict[str, Skater] = {}
+
+    # First pass: resolve every slot with an assigned id. Drop ids that no
+    # longer point to a roster skater (stale/traded), so the fallback path
+    # below kicks in for those slots.
+    all_slots = list(_SKATER_POS_BY_SLOT.keys())
+    for slot in all_slots:
+        sid = getattr(lu, slot)
+        if sid is None:
+            continue
+        sk = by_id.get(sid)
+        if sk is None:
+            continue
+        resolved[slot] = sk
+        used.add(sk.id)
+
+    # Second pass: fill empty slots from the position pool first, then any
+    # unused skater. If still nothing, repeat an already-placed skater.
+    for slot in all_slots:
+        if slot in resolved:
+            continue
+        pos = _SKATER_POS_BY_SLOT[slot]
+        cand = next((s for s in by_pos.get(pos, []) if s.id not in used), None)
+        if cand is None:
+            for pool in by_pos.values():
+                cand = next((s for s in pool if s.id not in used), None)
+                if cand is not None:
+                    break
+        if cand is None:
+            # Roster too small even with reuse — repeat the first resolved skater.
+            cand = next(iter(resolved.values()), None)
+        if cand is None:
+            raise LeagueNotFound(
+                f"team {team_id} has no skaters available to ice a lineup"
+            )
+        resolved[slot] = cand
+        used.add(cand.id)
+
     fwd_lines = tuple(
-        SimLine(skaters=tuple(_to_sim_skater(skaters[getattr(lu, c)]) for c in trio))
+        SimLine(skaters=tuple(_to_sim_skater(resolved[c]) for c in trio))
         for trio in LINE_FWD_SLOTS
     )
     pairs = tuple(
-        SimLine(skaters=tuple(_to_sim_skater(skaters[getattr(lu, c)]) for c in pair))
+        SimLine(skaters=tuple(_to_sim_skater(resolved[c]) for c in pair))
         for pair in PAIR_DEF_SLOTS
     )
-    starter = db.query(Goalie).filter_by(id=lu.starting_goalie_id).one()
+
+    # Goalies: prefer the saved starter, then backup, then any team goalie.
+    goalie = None
+    if lu.starting_goalie_id is not None:
+        goalie = db.query(Goalie).filter_by(id=lu.starting_goalie_id).first()
+    if goalie is None and lu.backup_goalie_id is not None:
+        goalie = db.query(Goalie).filter_by(id=lu.backup_goalie_id).first()
+    if goalie is None:
+        goalie = db.query(Goalie).filter_by(team_id=team_id).first()
+    if goalie is None:
+        raise LeagueNotFound(f"team {team_id} has no goalie available")
     return SimTeamLineup(
         forward_lines=fwd_lines,
         defense_pairs=pairs,
-        starting_goalie=_to_sim_goalie(starter),
+        starting_goalie=_to_sim_goalie(goalie),
     )
 
 
