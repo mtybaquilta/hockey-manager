@@ -5,10 +5,10 @@ from app.services.generation.teams import TEAM_COUNT, generate_teams
 
 
 def test_generates_4_teams_with_full_rosters(db):
-    s = Season(seed=1)
+    s = Season(seed=1, year=2025)
     db.add(s)
     db.flush()
-    teams = generate_teams(random.Random(s.seed), db)
+    teams = generate_teams(random.Random(s.seed), db, season_year=2025)
     assert len(teams) == TEAM_COUNT
     for t in teams:
         skaters = db.query(Skater).filter_by(team_id=t.id).all()

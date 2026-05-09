@@ -6,16 +6,21 @@ from app.db import get_db
 from sqlalchemy import func
 
 from app.errors import GoalieNotFound, SkaterNotFound
+from app.services import contract_service
 from app.services.league_service import get_league
+from app.services.player_age import age_from_birth_date
 from app.models import (
     DevelopmentEvent,
     Game,
     Goalie,
     GoalieGameStat,
+    Lineup,
     SeasonProgression,
     Skater,
     SkaterGameStat,
 )
+from app.schemas.contract import ContractOut
+from app.services.free_agents_service import GOALIE_LINEUP_COLS, SKATER_LINEUP_COLS
 from app.schemas.career import (
     GoalieCareerOut,
     GoalieSeasonStatsOut,
@@ -81,29 +86,222 @@ class GoalieGameLogRow(BaseModel):
     save_pct: float
 
 
+class LineupStatus(BaseModel):
+    slot_label: str | None
+    special_teams: list[str]
+
+
+class SkaterTeamRanks(BaseModel):
+    points: int | None
+    goals: int | None
+    assists: int | None
+    shots: int | None
+    team_skater_count: int
+
+
+class GoalieTeamRanks(BaseModel):
+    save_pct: int | None
+    wins: int | None
+    games_played: int | None
+    team_goalie_count: int
+
+
 class SkaterDetailOut(BaseModel):
     id: int
     name: str
     age: int
     position: str
-    team_id: int
+    team_id: int | None
     potential: int
     development_type: str
     attributes: _SkaterAttrs
     totals: SkaterTotals
     game_log: list[SkaterGameLogRow]
+    lineup_status: LineupStatus
+    team_ranks: SkaterTeamRanks
+    contract: ContractOut | None = None
 
 
 class GoalieDetailOut(BaseModel):
     id: int
     name: str
     age: int
-    team_id: int
+    team_id: int | None
     potential: int
     development_type: str
     attributes: _GoalieAttrs
     totals: GoalieTotals
     game_log: list[GoalieGameLogRow]
+    lineup_status: LineupStatus
+    team_ranks: GoalieTeamRanks
+    contract: ContractOut | None = None
+
+
+_SLOT_LABELS = {
+    "line1_lw_id": "Line 1 · LW", "line1_c_id": "Line 1 · C", "line1_rw_id": "Line 1 · RW",
+    "line2_lw_id": "Line 2 · LW", "line2_c_id": "Line 2 · C", "line2_rw_id": "Line 2 · RW",
+    "line3_lw_id": "Line 3 · LW", "line3_c_id": "Line 3 · C", "line3_rw_id": "Line 3 · RW",
+    "line4_lw_id": "Line 4 · LW", "line4_c_id": "Line 4 · C", "line4_rw_id": "Line 4 · RW",
+    "pair1_ld_id": "Pair 1 · LD", "pair1_rd_id": "Pair 1 · RD",
+    "pair2_ld_id": "Pair 2 · LD", "pair2_rd_id": "Pair 2 · RD",
+    "pair3_ld_id": "Pair 3 · LD", "pair3_rd_id": "Pair 3 · RD",
+    "starting_goalie_id": "Starter",
+    "backup_goalie_id": "Backup",
+}
+
+
+def _skater_slot(lineup: Lineup | None, skater_id: int) -> str | None:
+    if lineup is None:
+        return None
+    for col in SKATER_LINEUP_COLS:
+        if getattr(lineup, col) == skater_id:
+            return _SLOT_LABELS[col]
+    return None
+
+
+def _goalie_slot(lineup: Lineup | None, goalie_id: int) -> str | None:
+    if lineup is None:
+        return None
+    for col in GOALIE_LINEUP_COLS:
+        if getattr(lineup, col) == goalie_id:
+            return _SLOT_LABELS[col]
+    return None
+
+
+def _pp_score(s: Skater) -> float:
+    return 0.45 * s.shooting + 0.35 * s.passing + 0.2 * s.skating
+
+
+def _pk_score(s: Skater) -> float:
+    return 0.45 * s.defense + 0.3 * s.skating + 0.25 * s.physical
+
+
+def _skater_special_teams(db: Session, skater: Skater) -> list[str]:
+    """Mirror sim.special_teams selection: top-6 forwards by pp_score → PP1/PP2;
+    top-4 defensemen by pp_score → PP1/PP2 D; top-2 forwards/D by pk_score → PK."""
+    if skater.team_id is None:
+        return []
+    teammates = db.query(Skater).filter(Skater.team_id == skater.team_id).all()
+    forwards = [s for s in teammates if s.position not in ("LD", "RD")]
+    defense = [s for s in teammates if s.position in ("LD", "RD")]
+    is_fwd = skater.position not in ("LD", "RD")
+    pool = forwards if is_fwd else defense
+    pp_n = 6 if is_fwd else 4
+    pk_n = 2
+    units: list[str] = []
+    pp_sorted = sorted(pool, key=lambda s: (-_pp_score(s), s.id))
+    pp_top = pp_sorted[:pp_n]
+    if any(s.id == skater.id for s in pp_top[: pp_n // 2]):
+        units.append("PP1")
+    elif any(s.id == skater.id for s in pp_top[pp_n // 2:]):
+        units.append("PP2")
+    pk_sorted = sorted(pool, key=lambda s: (-_pk_score(s), s.id))
+    if any(s.id == skater.id for s in pk_sorted[:pk_n]):
+        units.append("PK")
+    return units
+
+
+def _skater_lineup_status(db: Session, skater: Skater) -> LineupStatus:
+    if skater.team_id is None:
+        return LineupStatus(slot_label=None, special_teams=[])
+    lineup = db.query(Lineup).filter(Lineup.team_id == skater.team_id).first()
+    return LineupStatus(
+        slot_label=_skater_slot(lineup, skater.id),
+        special_teams=_skater_special_teams(db, skater),
+    )
+
+
+def _goalie_lineup_status(db: Session, goalie: Goalie) -> LineupStatus:
+    if goalie.team_id is None:
+        return LineupStatus(slot_label=None, special_teams=[])
+    lineup = db.query(Lineup).filter(Lineup.team_id == goalie.team_id).first()
+    return LineupStatus(slot_label=_goalie_slot(lineup, goalie.id), special_teams=[])
+
+
+def _rank_or_none(values: list[tuple[int, float]], target_id: int) -> int | None:
+    """Given (player_id, value) tuples, return 1-based rank of target by value desc.
+    Returns None if target not in the list."""
+    sorted_vals = sorted(values, key=lambda kv: (-kv[1], kv[0]))
+    for i, (pid, _) in enumerate(sorted_vals, start=1):
+        if pid == target_id:
+            return i
+    return None
+
+
+def _skater_team_ranks(
+    db: Session, skater: Skater, season_id: int
+) -> SkaterTeamRanks:
+    if skater.team_id is None:
+        return SkaterTeamRanks(
+            points=None, goals=None, assists=None, shots=None, team_skater_count=0
+        )
+    rows = (
+        db.query(
+            SkaterGameStat.skater_id,
+            func.coalesce(func.sum(SkaterGameStat.goals), 0).label("g"),
+            func.coalesce(func.sum(SkaterGameStat.assists), 0).label("a"),
+            func.coalesce(func.sum(SkaterGameStat.shots), 0).label("s"),
+        )
+        .join(Skater, Skater.id == SkaterGameStat.skater_id)
+        .join(Game, SkaterGameStat.game_id == Game.id)
+        .filter(Skater.team_id == skater.team_id, Game.season_id == season_id)
+        .group_by(SkaterGameStat.skater_id)
+        .all()
+    )
+    if not rows:
+        team_size = (
+            db.query(Skater).filter(Skater.team_id == skater.team_id).count()
+        )
+        return SkaterTeamRanks(
+            points=None, goals=None, assists=None, shots=None,
+            team_skater_count=team_size,
+        )
+    goals = [(r.skater_id, float(r.g)) for r in rows]
+    assists = [(r.skater_id, float(r.a)) for r in rows]
+    points = [(r.skater_id, float(r.g + r.a)) for r in rows]
+    shots = [(r.skater_id, float(r.s)) for r in rows]
+    return SkaterTeamRanks(
+        points=_rank_or_none(points, skater.id),
+        goals=_rank_or_none(goals, skater.id),
+        assists=_rank_or_none(assists, skater.id),
+        shots=_rank_or_none(shots, skater.id),
+        team_skater_count=len(rows),
+    )
+
+
+def _goalie_team_ranks(
+    db: Session, goalie: Goalie, season_id: int
+) -> GoalieTeamRanks:
+    if goalie.team_id is None:
+        return GoalieTeamRanks(
+            save_pct=None, wins=None, games_played=None, team_goalie_count=0
+        )
+    rows = (
+        db.query(
+            GoalieGameStat.goalie_id,
+            func.count(GoalieGameStat.id).label("gp"),
+            func.coalesce(func.sum(GoalieGameStat.shots_against), 0).label("sa"),
+            func.coalesce(func.sum(GoalieGameStat.saves), 0).label("sv"),
+        )
+        .join(Goalie, Goalie.id == GoalieGameStat.goalie_id)
+        .join(Game, GoalieGameStat.game_id == Game.id)
+        .filter(Goalie.team_id == goalie.team_id, Game.season_id == season_id)
+        .group_by(GoalieGameStat.goalie_id)
+        .all()
+    )
+    if not rows:
+        team_size = db.query(Goalie).filter(Goalie.team_id == goalie.team_id).count()
+        return GoalieTeamRanks(
+            save_pct=None, wins=None, games_played=None, team_goalie_count=team_size
+        )
+    sv_pct = [(r.goalie_id, (r.sv / r.sa) if r.sa else 0.0) for r in rows]
+    gp = [(r.goalie_id, float(r.gp)) for r in rows]
+    return GoalieTeamRanks(
+        save_pct=_rank_or_none(sv_pct, goalie.id),
+        wins=None,
+        games_played=_rank_or_none(gp, goalie.id),
+        team_goalie_count=len(rows),
+    )
 
 
 router = APIRouter(prefix="/players", tags=["players"])
@@ -151,10 +349,11 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
         shots=s_total,
         shooting_pct=(g_total / s_total) if s_total else 0.0,
     )
+    contract = contract_service.get_active_contract_for_skater(db, sk.id)
     return SkaterDetailOut(
         id=sk.id,
         name=sk.name,
-        age=sk.age,
+        age=age_from_birth_date(sk.birth_date, season.year),
         position=sk.position,
         team_id=sk.team_id,
         potential=sk.potential,
@@ -168,6 +367,9 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
         ),
         totals=totals,
         game_log=log,
+        lineup_status=_skater_lineup_status(db, sk),
+        team_ranks=_skater_team_ranks(db, sk, season.id),
+        contract=ContractOut.model_validate(contract) if contract else None,
     )
 
 
@@ -213,10 +415,11 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         save_pct=(sv_total / sa_total) if sa_total else 0.0,
         gaa=(ga_total / gp) if gp else 0.0,
     )
+    contract = contract_service.get_active_contract_for_goalie(db, gk.id)
     return GoalieDetailOut(
         id=gk.id,
         name=gk.name,
-        age=gk.age,
+        age=age_from_birth_date(gk.birth_date, season.year),
         team_id=gk.team_id,
         potential=gk.potential,
         development_type=gk.development_type,
@@ -229,6 +432,9 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         ),
         totals=totals,
         game_log=log,
+        lineup_status=_goalie_lineup_status(db, gk),
+        team_ranks=_goalie_team_ranks(db, gk, season.id),
+        contract=ContractOut.model_validate(contract) if contract else None,
     )
 
 

@@ -33,7 +33,7 @@ def test_sign_skater_attaches_to_user_team(db):
     try:
         client = _client(db)
         sk = _any_fa_skater(db)
-        r = client.post(f"/api/teams/{season.user_team_id}/sign/skater/{sk.id}")
+        r = client.post(f"/api/teams/{season.user_team_id}/sign/skater/{sk.id}", json={"length": 2, "salary": 1500})
         assert r.status_code == 200, r.text
         assert r.json()["team_id"] == season.user_team_id
         db.expire_all()
@@ -50,7 +50,7 @@ def test_sign_rejected_for_non_user_team(db):
             db.query(Team).filter(Team.id != season.user_team_id).order_by(Team.id).first()
         )
         sk = _any_fa_skater(db)
-        r = client.post(f"/api/teams/{other.id}/sign/skater/{sk.id}")
+        r = client.post(f"/api/teams/{other.id}/sign/skater/{sk.id}", json={"length": 2, "salary": 1500})
         assert r.status_code == 403
         assert r.json()["error_code"] == "NotUserTeam"
     finally:
@@ -63,7 +63,7 @@ def test_sign_rejected_when_already_signed(db):
         client = _client(db)
         rostered = db.query(Skater).filter(Skater.team_id.is_not(None)).first()
         r = client.post(
-            f"/api/teams/{season.user_team_id}/sign/skater/{rostered.id}"
+            f"/api/teams/{season.user_team_id}/sign/skater/{rostered.id}", json={"length": 2, "salary": 1500}
         )
         assert r.status_code == 400
         assert r.json()["error_code"] == "PlayerNotFreeAgent"
@@ -76,7 +76,7 @@ def test_sign_goalie(db):
     try:
         client = _client(db)
         g = _any_fa_goalie(db)
-        r = client.post(f"/api/teams/{season.user_team_id}/sign/goalie/{g.id}")
+        r = client.post(f"/api/teams/{season.user_team_id}/sign/goalie/{g.id}", json={"length": 2, "salary": 1500})
         assert r.status_code == 200
         assert r.json()["team_id"] == season.user_team_id
     finally:
@@ -148,7 +148,8 @@ def test_release_then_resign_keeps_id(db):
         )
         assert rel.status_code == 200
         re_sign = client.post(
-            f"/api/teams/{season.user_team_id}/sign/skater/{sk_id}"
+            f"/api/teams/{season.user_team_id}/sign/skater/{sk_id}",
+            json={"length": 2, "salary": 1500},
         )
         assert re_sign.status_code == 200
         body = re_sign.json()

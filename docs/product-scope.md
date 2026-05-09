@@ -114,6 +114,17 @@ Track basic standings:
 - Accepted trade swaps `team_id` in one transaction. Lineup slots referencing either traded player are cleared automatically (mirrors the release flow).
 - Out of scope: multi-player trades, draft picks, salary cap, contracts, NTC, AI↔AI trades, history page, deadline, negotiation.
 
+### Contracts + Season Rollover (P1.3)
+
+- Every rostered skater and goalie has exactly one active `contract` row at any time. Contracts carry `length`, `signed_season_year`, `expires_after_year`, `salary` (in $1k units, 750–15000), `no_trade_clause`, and `status` (`active` / `expired` / `terminated`).
+- League creation generates one initial active contract per rostered player; free agents have no contract.
+- Player age is computed from `birth_date` against `Season.year` (no `age` column).
+- Free-agent signing requires terms (length 1–8, salary 750–15000, optional NTC). Release flips the active contract to `terminated` (history preserved) and the player becomes a free agent.
+- Trade block excludes NTC holders; proposing a trade with either side carrying NTC returns `409 NoTradeClause`. Trade value adds a small contract modifier `(years_remaining - 2) * 0.5 - (salary - market) * 0.001`.
+- When the Stanley Cup final ends, season transitions to `phase=offseason` (status stays `active`). Dashboard shows the offseason banner and a "Start New Season" button. Advancing during offseason is blocked.
+- Rollover requires `phase=offseason`: ages players via the new `Season.year`, expires every active contract whose `expires_after_year < new_year`, frees those players (clears lineup slots, sets `team_id=null`), and refills empty lineup slots with the best available roster player by position.
+- UI: roster + free-agents pages render a `ContractBadge` (`{years}y · ${salary}M` with optional NTC chip); player detail shows the same; trade block shows it on each candidate; sign-FA modal collects length/salary/NTC.
+
 ### UI
 
 Minimum useful screens:

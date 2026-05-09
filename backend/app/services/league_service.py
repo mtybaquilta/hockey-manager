@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.errors import LeagueNotFound, TeamNotFound
 from app.models import (
+    Contract,
     Game,
     GameEvent,
     Goalie,
     GoalieGameStat,
     Lineup,
+    PlayoffSeries,
     Season,
     Skater,
     SkaterGameStat,
@@ -18,10 +20,13 @@ from app.models import (
     TeamGameplan,
 )
 from app.services.gameplan_service import generate_gameplans_for_league
+from app.services.generation.contracts import generate_initial_contracts
 from app.services.generation.free_agents import generate_free_agent_pool
 from app.services.generation.lineups import generate_default_lineups
 from app.services.generation.schedule import generate_schedule
 from app.services.generation.teams import generate_teams
+
+LEAGUE_START_YEAR = 2025
 
 
 def _wipe(db: Session) -> None:
@@ -30,8 +35,10 @@ def _wipe(db: Session) -> None:
         SkaterGameStat,
         GoalieGameStat,
         Game,
+        PlayoffSeries,
         Standing,
         Lineup,
+        Contract,
         Skater,
         Goalie,
         TeamGameplan,
@@ -44,15 +51,22 @@ def _wipe(db: Session) -> None:
 def create_or_reset_league(db: Session, seed: int | None) -> Season:
     _wipe(db)
     seed_val = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-    season = Season(seed=seed_val, current_matchday=1, status="active")
+    season = Season(
+        seed=seed_val,
+        current_matchday=1,
+        status="active",
+        phase="regular_season",
+        year=LEAGUE_START_YEAR,
+    )
     db.add(season)
     db.flush()
     rng = random.Random(seed_val)
-    teams = generate_teams(rng, db)
+    teams = generate_teams(rng, db, season_year=LEAGUE_START_YEAR)
     used_names: set[str] = {p.name for p in db.query(Skater).all()}
     used_names |= {g.name for g in db.query(Goalie).all()}
-    generate_free_agent_pool(rng, db, used_names)
+    generate_free_agent_pool(rng, db, used_names, season_year=LEAGUE_START_YEAR)
     db.flush()
+    generate_initial_contracts(rng, db, season_year=LEAGUE_START_YEAR)
     generate_default_lineups(db, [t.id for t in teams])
     generate_schedule(rng, db, season.id, [t.id for t in teams])
     for t in teams:

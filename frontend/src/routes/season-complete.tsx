@@ -4,7 +4,7 @@ import { Logo } from "../components/Logo";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { useStartNextSeason } from "../queries/development";
-import { useCreateLeague } from "../queries/league";
+import { useCreateLeague, useLeague } from "../queries/league";
 import { useSeasonStats } from "../queries/season";
 import { useStandings } from "../queries/standings";
 import { useTeams } from "../queries/teams";
@@ -16,14 +16,19 @@ const Done = () => {
   const s = useStandings();
   const stats = useSeasonStats();
   const teams = useTeams();
+  const league = useLeague();
   const create = useCreateLeague();
   const startNext = useStartNextSeason();
   const navigate = useNavigate();
-  if (!s.data || !stats.data || !teams.data) {
+  if (!s.data || !stats.data || !teams.data || !league.data) {
     return <Shell crumbs={["Continental Hockey League", "Season Complete"]}>Loading…</Shell>;
   }
-  const champ = s.data.rows[0];
-  const champTeam = teams.data.find((t) => t.id === champ.team_id);
+  const championId = league.data.champion_team_id;
+  const champRow =
+    (championId != null && s.data.rows.find((r) => r.team_id === championId)) ||
+    s.data.rows[0];
+  const champTeamId = championId ?? champRow.team_id;
+  const champTeam = teams.data.find((t) => t.id === champTeamId);
   const st = stats.data;
 
   return (
@@ -77,13 +82,13 @@ const Done = () => {
           {champTeam && <Logo teamId={champTeam.id} size={72} />}
           <div>
             <div style={{ fontSize: 11, letterSpacing: "0.18em", color: "rgba(255,255,255,.6)", textTransform: "uppercase", fontWeight: 700 }}>
-              Champion · '25-26
+              {championId != null ? "Cup Champion" : "Top of Standings"} · '25-26
             </div>
             <div style={{ fontSize: 38, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 2 }}>
               {champTeam?.name ?? "—"}
             </div>
             <div style={{ fontFamily: "'Roboto Condensed', monospace", fontSize: 16, marginTop: 6 }}>
-              {champ.points} PTS · {champ.wins}-{champ.losses}-{champ.ot_losses}
+              {champRow.points} PTS · {champRow.wins}-{champRow.losses}-{champRow.ot_losses}
             </div>
           </div>
         </div>

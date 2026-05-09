@@ -138,8 +138,12 @@ def test_rollover_preserves_gameplans(db):
         gp.team_id: (gp.style, gp.line_usage)
         for gp in db.query(TeamGameplan).all()
     }
-    while advance_matchday(db)["season_status"] != "complete":
-        pass
+    for _ in range(5000):
+        res = advance_matchday(db)
+        if res["season_phase"] == "offseason":
+            break
+        if res["season_status"] == "complete":
+            break
     db.commit()
     season_rollover_service.start_next_season(db)
     db.commit()

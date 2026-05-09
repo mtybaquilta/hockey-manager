@@ -1,19 +1,35 @@
+export interface Contract {
+  id: number;
+  length: number;
+  signed_season_year: number;
+  expires_after_year: number;
+  salary: number;
+  no_trade_clause: boolean;
+  status: string;
+}
+
 export type ResultType = "REG" | "OT" | "SO";
 export type Position = "LW" | "C" | "RW" | "LD" | "RD";
 
 export interface TeamSummary { id: number; name: string; abbreviation: string; }
+export type SeasonPhase = "regular_season" | "playoffs" | "offseason";
 export interface League {
   season_id: number; seed: number; user_team_id: number | null;
   current_matchday: number; status: "active" | "complete";
+  phase: SeasonPhase;
+  year: number;
+  champion_team_id: number | null;
   teams: TeamSummary[];
 }
 export interface Skater {
   id: number; name: string; age: number; position: Position; potential: number;
   skating: number; shooting: number; passing: number; defense: number; physical: number;
+  contract?: Contract | null;
 }
 export interface Goalie {
   id: number; name: string; age: number; potential: number;
   reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number;
+  contract?: Contract | null;
 }
 export interface Roster { team: TeamSummary; skaters: Skater[]; goalies: Goalie[]; }
 export interface LineupSlots {
@@ -65,9 +81,16 @@ export interface GameDetail {
   away_shots_by_period: number[];
 }
 export interface AdvanceResponse {
-  advanced_game_ids: number[]; current_matchday: number; season_status: "active" | "complete";
+  advanced_game_ids: number[]; current_matchday: number;
+  season_status: "active" | "complete";
+  season_phase: SeasonPhase;
 }
-export interface SeasonStatus { current_matchday: number; status: "active" | "complete"; }
+export interface SeasonStatus {
+  current_matchday: number;
+  status: "active" | "complete";
+  phase: SeasonPhase;
+  year: number;
+}
 export interface SeasonStats {
   games_played: number;
   avg_total_goals_per_game: number;
@@ -123,12 +146,24 @@ export interface SkaterGameLogRow {
   game_id: number; matchday: number; opponent_team_id: number; is_home: boolean;
   goals: number; assists: number; points: number; shots: number;
 }
+export interface LineupStatus { slot_label: string | null; special_teams: string[]; }
+export interface SkaterTeamRanks {
+  points: number | null; goals: number | null; assists: number | null; shots: number | null;
+  team_skater_count: number;
+}
+export interface GoalieTeamRanks {
+  save_pct: number | null; wins: number | null; games_played: number | null;
+  team_goalie_count: number;
+}
 export interface SkaterDetail {
-  id: number; name: string; age: number; position: Position; team_id: number;
+  id: number; name: string; age: number; position: Position; team_id: number | null;
   potential: number; development_type: string;
   attributes: { skating: number; shooting: number; passing: number; defense: number; physical: number };
   totals: SkaterTotals;
   game_log: SkaterGameLogRow[];
+  lineup_status: LineupStatus;
+  team_ranks: SkaterTeamRanks;
+  contract?: Contract | null;
 }
 
 export interface GoalieTotals {
@@ -139,11 +174,14 @@ export interface GoalieGameLogRow {
   shots_against: number; saves: number; goals_against: number; save_pct: number;
 }
 export interface GoalieDetail {
-  id: number; name: string; age: number; team_id: number;
+  id: number; name: string; age: number; team_id: number | null;
   potential: number; development_type: string;
   attributes: { reflexes: number; positioning: number; rebound_control: number; puck_handling: number; mental: number };
   totals: GoalieTotals;
   game_log: GoalieGameLogRow[];
+  lineup_status: LineupStatus;
+  team_ranks: GoalieTeamRanks;
+  contract?: Contract | null;
 }
 
 export interface DevelopmentEventOut {
@@ -188,6 +226,39 @@ export interface Gameplan {
   editable: boolean;
 }
 
+export interface PlayoffGame {
+  id: number;
+  matchday: number;
+  game_in_series: number;
+  home_team_id: number;
+  away_team_id: number;
+  status: "scheduled" | "simulated";
+  home_score: number | null;
+  away_score: number | null;
+  result_type: ResultType | null;
+}
+export interface PlayoffSeries {
+  id: number;
+  round: number;
+  bracket_slot: number;
+  high_seed: number;
+  low_seed: number;
+  high_seed_team_id: number | null;
+  low_seed_team_id: number | null;
+  wins_high: number;
+  wins_low: number;
+  winner_team_id: number | null;
+  status: "active" | "complete";
+  games: PlayoffGame[];
+}
+export interface PlayoffRound { round: number; series: PlayoffSeries[]; }
+export interface Playoffs {
+  phase: SeasonPhase;
+  season_status: "active" | "complete";
+  champion_team_id: number | null;
+  rounds: PlayoffRound[];
+}
+
 export interface ApiError { error_code: string; message: string; }
 
 export interface FreeAgentSkater {
@@ -225,6 +296,7 @@ export interface TradeBlockEntry {
   ovr: number;
   asking_value: number;
   reason: string;
+  contract?: Contract | null;
 }
 
 export interface TradeProposalRequest {

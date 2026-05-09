@@ -71,6 +71,26 @@ class NotUserTeam(DomainError):
     status = 403
 
 
+class GameAlreadySimulated(DomainError):
+    code = "GameAlreadySimulated"
+    status = 409
+
+
+class ContractTermsInvalid(DomainError):
+    code = "ContractTermsInvalid"
+    status = 422
+
+
+class NoTradeClause(DomainError):
+    code = "NoTradeClause"
+    status = 409
+
+
+class OffseasonRequired(DomainError):
+    code = "OffseasonRequired"
+    status = 409
+
+
 def install_handlers(app: FastAPI) -> None:
     async def handle(_request: Request, exc: DomainError):
         return JSONResponse(

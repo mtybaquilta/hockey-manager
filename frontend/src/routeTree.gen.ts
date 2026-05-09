@@ -14,6 +14,7 @@ import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StandingsRouteImport } from './routes/standings'
 import { Route as SeasonCompleteRouteImport } from './routes/season-complete'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as PlayoffsRouteImport } from './routes/playoffs'
 import { Route as FreeAgentsRouteImport } from './routes/free-agents'
 import { Route as DevelopmentSummaryRouteImport } from './routes/development-summary'
 import { Route as IndexRouteImport } from './routes/index'
@@ -46,6 +47,11 @@ const SeasonCompleteRoute = SeasonCompleteRouteImport.update({
 const ScheduleRoute = ScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayoffsRoute = PlayoffsRouteImport.update({
+  id: '/playoffs',
+  path: '/playoffs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FreeAgentsRoute = FreeAgentsRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/development-summary': typeof DevelopmentSummaryRoute
   '/free-agents': typeof FreeAgentsRoute
+  '/playoffs': typeof PlayoffsRoute
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/development-summary': typeof DevelopmentSummaryRoute
   '/free-agents': typeof FreeAgentsRoute
+  '/playoffs': typeof PlayoffsRoute
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/development-summary': typeof DevelopmentSummaryRoute
   '/free-agents': typeof FreeAgentsRoute
+  '/playoffs': typeof PlayoffsRoute
   '/schedule': typeof ScheduleRoute
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/development-summary'
     | '/free-agents'
+    | '/playoffs'
     | '/schedule'
     | '/season-complete'
     | '/standings'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/development-summary'
     | '/free-agents'
+    | '/playoffs'
     | '/schedule'
     | '/season-complete'
     | '/standings'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/development-summary'
     | '/free-agents'
+    | '/playoffs'
     | '/schedule'
     | '/season-complete'
     | '/standings'
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DevelopmentSummaryRoute: typeof DevelopmentSummaryRoute
   FreeAgentsRoute: typeof FreeAgentsRoute
+  PlayoffsRoute: typeof PlayoffsRoute
   ScheduleRoute: typeof ScheduleRoute
   SeasonCompleteRoute: typeof SeasonCompleteRoute
   StandingsRoute: typeof StandingsRoute
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/schedule'
       preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playoffs': {
+      id: '/playoffs'
+      path: '/playoffs'
+      fullPath: '/playoffs'
+      preLoaderRoute: typeof PlayoffsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/free-agents': {
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DevelopmentSummaryRoute: DevelopmentSummaryRoute,
   FreeAgentsRoute: FreeAgentsRoute,
+  PlayoffsRoute: PlayoffsRoute,
   ScheduleRoute: ScheduleRoute,
   SeasonCompleteRoute: SeasonCompleteRoute,
   StandingsRoute: StandingsRoute,

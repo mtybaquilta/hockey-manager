@@ -16,15 +16,24 @@ def test_full_season_via_api(db):
     try:
         client = TestClient(app)
         client.post("/api/league", json={"seed": 5})
-        for _ in range(EXPECTED_MATCHDAYS):
+        # Sim through regular season + playoffs into offseason.
+        for _ in range(5000):
             r = client.post("/api/season/advance")
             assert r.status_code == 200
+            if r.json().get("season_phase") == "offseason":
+                break
+            if r.json()["season_status"] == "complete":
+                break
         status = client.get("/api/season/status").json()
-        assert status == {"current_matchday": EXPECTED_MATCHDAYS + 1, "status": "complete"}
+        assert status["status"] == "active"
         standings = client.get("/api/standings").json()
         assert len(standings["rows"]) == TEAM_COUNT
         games = client.get("/api/schedule").json()["games"]
-        assert all(g["status"] == "simulated" for g in games)
+        rs_games = [g for g in games if g["matchday"] <= EXPECTED_MATCHDAYS]
+        assert all(g["status"] == "simulated" for g in rs_games)
+        playoffs = client.get("/api/playoffs").json()
+        assert playoffs["champion_team_id"] is not None
+        assert len(playoffs["rounds"]) == 4
         box = client.get(f"/api/games/{games[0]['id']}").json()
         assert box["events"]
     finally:

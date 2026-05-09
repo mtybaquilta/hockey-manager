@@ -7,7 +7,7 @@ from app.services.generation.players import skater_overall
 
 
 def test_generates_expected_counts(db):
-    generate_free_agent_pool(random.Random(42), db, set())
+    generate_free_agent_pool(random.Random(42), db, set(), season_year=2025)
     db.flush()
     skaters = db.query(Skater).filter(Skater.team_id.is_(None)).all()
     goalies = db.query(Goalie).filter(Goalie.team_id.is_(None)).all()
@@ -16,7 +16,7 @@ def test_generates_expected_counts(db):
 
 
 def test_position_distribution(db):
-    generate_free_agent_pool(random.Random(42), db, set())
+    generate_free_agent_pool(random.Random(42), db, set(), season_year=2025)
     db.flush()
     counts = Counter(
         s.position for s in db.query(Skater).filter(Skater.team_id.is_(None)).all()
@@ -25,7 +25,7 @@ def test_position_distribution(db):
 
 
 def test_pool_is_deterministic(db):
-    generate_free_agent_pool(random.Random(99), db, set())
+    generate_free_agent_pool(random.Random(99), db, set(), season_year=2025)
     db.flush()
     snap1 = sorted(
         (s.name, s.position, s.skating, s.shooting, s.passing, s.defense, s.physical)
@@ -35,7 +35,7 @@ def test_pool_is_deterministic(db):
     db.query(Skater).filter(Skater.team_id.is_(None)).delete(synchronize_session=False)
     db.query(Goalie).filter(Goalie.team_id.is_(None)).delete(synchronize_session=False)
     db.flush()
-    generate_free_agent_pool(random.Random(99), db, set())
+    generate_free_agent_pool(random.Random(99), db, set(), season_year=2025)
     db.flush()
     snap2 = sorted(
         (s.name, s.position, s.skating, s.shooting, s.passing, s.defense, s.physical)
@@ -45,7 +45,7 @@ def test_pool_is_deterministic(db):
 
 
 def test_pool_includes_a_gem(db):
-    generate_free_agent_pool(random.Random(7), db, set())
+    generate_free_agent_pool(random.Random(7), db, set(), season_year=2025)
     db.flush()
     skaters = db.query(Skater).filter(Skater.team_id.is_(None)).all()
     overalls = [
@@ -58,7 +58,7 @@ def test_pool_includes_a_gem(db):
 def test_no_name_collision_with_used(db):
     forbidden = {"Alice Free", "Bob Pool"}
     used = set(forbidden)
-    generate_free_agent_pool(random.Random(5), db, used)
+    generate_free_agent_pool(random.Random(5), db, used, season_year=2025)
     db.flush()
     names = {s.name for s in db.query(Skater).filter(Skater.team_id.is_(None)).all()}
     names |= {g.name for g in db.query(Goalie).filter(Goalie.team_id.is_(None)).all()}

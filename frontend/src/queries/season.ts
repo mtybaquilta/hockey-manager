@@ -18,6 +18,7 @@ export const useAdvance = () => {
       qc.invalidateQueries({ queryKey: ["season", "status"] });
       qc.invalidateQueries({ queryKey: ["season", "stats"] });
       qc.invalidateQueries({ queryKey: ["league"] });
+      qc.invalidateQueries({ queryKey: ["playoffs"] });
       qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "game" });
     },
   });

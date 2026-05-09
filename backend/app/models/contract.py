@@ -1,0 +1,54 @@
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, func, text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db import Base
+
+
+class Contract(Base):
+    __tablename__ = "contract"
+    __table_args__ = (
+        CheckConstraint(
+            "(skater_id IS NOT NULL)::int + (goalie_id IS NOT NULL)::int = 1",
+            name="contract_player_xor",
+        ),
+        CheckConstraint(
+            "status IN ('active','expired','terminated')",
+            name="contract_status_check",
+        ),
+        Index(
+            "ix_contract_skater_id_active",
+            "skater_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND skater_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_contract_goalie_id_active",
+            "goalie_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND goalie_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    skater_id: Mapped[int | None] = mapped_column(
+        ForeignKey("skater.id", ondelete="CASCADE"), nullable=True
+    )
+    goalie_id: Mapped[int | None] = mapped_column(
+        ForeignKey("goalie.id", ondelete="CASCADE"), nullable=True
+    )
+    length: Mapped[int] = mapped_column(Integer, nullable=False)
+    signed_season_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_after_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    salary: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_trade_clause: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", server_default="active"
+    )
+    terminated_season_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

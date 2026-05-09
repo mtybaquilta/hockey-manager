@@ -1,4 +1,5 @@
 import random
+from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -59,7 +60,9 @@ def goalie_overall(reflexes: int, positioning: int, rebound_control: int, puck_h
     return round((reflexes + positioning + rebound_control + puck_handling + mental) / 5)
 
 
-def generate_players_for_team(rng: random.Random, db: Session, team_id: int, used_names: set[str]) -> None:
+def generate_players_for_team(
+    rng: random.Random, db: Session, team_id: int, used_names: set[str], *, season_year: int
+) -> None:
     for pos in SKATER_LAYOUT:
         skating = _attr(rng)
         shooting = _attr(rng)
@@ -67,12 +70,13 @@ def generate_players_for_team(rng: random.Random, db: Session, team_id: int, use
         defense = _attr(rng) if pos in ("LD", "RD") else max(40, _attr(rng) - 5)
         physical = _attr(rng)
         age = rng.randint(19, 35)
+        birth_date = date(season_year - age, rng.randint(1, 12), rng.randint(1, 28))
         overall = skater_overall(skating, shooting, passing, defense, physical)
         db.add(
             Skater(
                 team_id=team_id,
                 name=make_player_name(rng, used_names),
-                age=age,
+                birth_date=birth_date,
                 position=pos,
                 skating=skating,
                 shooting=shooting,
@@ -90,12 +94,13 @@ def generate_players_for_team(rng: random.Random, db: Session, team_id: int, use
         puck_handling = _goalie_attr(rng)
         mental = _goalie_attr(rng)
         age = rng.randint(20, 36)
+        birth_date = date(season_year - age, rng.randint(1, 12), rng.randint(1, 28))
         overall = goalie_overall(reflexes, positioning, rebound_control, puck_handling, mental)
         db.add(
             Goalie(
                 team_id=team_id,
                 name=make_player_name(rng, used_names),
-                age=age,
+                birth_date=birth_date,
                 reflexes=reflexes,
                 positioning=positioning,
                 rebound_control=rebound_control,
