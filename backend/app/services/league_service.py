@@ -24,6 +24,8 @@ from app.services.generation.lineups import generate_default_lineups
 from app.services.generation.schedule import generate_schedule
 from app.services.generation.teams import generate_teams
 
+LEAGUE_START_YEAR = 2025
+
 
 def _wipe(db: Session) -> None:
     for model in [
@@ -46,7 +48,6 @@ def _wipe(db: Session) -> None:
 def create_or_reset_league(db: Session, seed: int | None) -> Season:
     _wipe(db)
     seed_val = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-    LEAGUE_START_YEAR = 2025
     season = Season(
         seed=seed_val,
         current_matchday=1,
@@ -57,10 +58,10 @@ def create_or_reset_league(db: Session, seed: int | None) -> Season:
     db.add(season)
     db.flush()
     rng = random.Random(seed_val)
-    teams = generate_teams(rng, db)
+    teams = generate_teams(rng, db, season_year=LEAGUE_START_YEAR)
     used_names: set[str] = {p.name for p in db.query(Skater).all()}
     used_names |= {g.name for g in db.query(Goalie).all()}
-    generate_free_agent_pool(rng, db, used_names)
+    generate_free_agent_pool(rng, db, used_names, season_year=LEAGUE_START_YEAR)
     db.flush()
     generate_default_lineups(db, [t.id for t in teams])
     generate_schedule(rng, db, season.id, [t.id for t in teams])

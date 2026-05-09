@@ -1,4 +1,5 @@
 import random
+from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -30,7 +31,7 @@ def _bump(value: int, delta: int) -> int:
 
 
 def generate_free_agent_pool(
-    rng: random.Random, db: Session, used_names: set[str]
+    rng: random.Random, db: Session, used_names: set[str], *, season_year: int
 ) -> None:
     """Seed the league's initial free-agent pool. Called once during league
     creation, after rostered players. Players have team_id=None.
@@ -43,11 +44,12 @@ def generate_free_agent_pool(
         defense = _fa_attr(rng) if pos in ("LD", "RD") else max(40, _fa_attr(rng) - 5)
         physical = _fa_attr(rng)
         age = rng.randint(19, 35)
+        birth_date = date(season_year - age, rng.randint(1, 12), rng.randint(1, 28))
         overall = skater_overall(skating, shooting, passing, defense, physical)
         sk = Skater(
             team_id=None,
             name=make_player_name(rng, used_names),
-            age=age,
+            birth_date=birth_date,
             position=pos,
             skating=skating,
             shooting=shooting,
@@ -68,13 +70,14 @@ def generate_free_agent_pool(
         puck_handling = _fa_goalie_attr(rng)
         mental = _fa_goalie_attr(rng)
         age = rng.randint(20, 36)
+        birth_date = date(season_year - age, rng.randint(1, 12), rng.randint(1, 28))
         overall = goalie_overall(
             reflexes, positioning, rebound_control, puck_handling, mental
         )
         g = Goalie(
             team_id=None,
             name=make_player_name(rng, used_names),
-            age=age,
+            birth_date=birth_date,
             reflexes=reflexes,
             positioning=positioning,
             rebound_control=rebound_control,
@@ -93,9 +96,10 @@ def generate_free_agent_pool(
         sk.passing = _bump(sk.passing, delta)
         sk.defense = _bump(sk.defense, delta)
         sk.physical = _bump(sk.physical, delta)
+        age = season_year - sk.birth_date.year
         sk.potential = _potential_for(
             rng,
-            sk.age,
+            age,
             skater_overall(sk.skating, sk.shooting, sk.passing, sk.defense, sk.physical),
         )
 
@@ -106,9 +110,10 @@ def generate_free_agent_pool(
         g.rebound_control = _bump(g.rebound_control, delta)
         g.puck_handling = _bump(g.puck_handling, delta)
         g.mental = _bump(g.mental, delta)
+        age = season_year - g.birth_date.year
         g.potential = _potential_for(
             rng,
-            g.age,
+            age,
             goalie_overall(
                 g.reflexes, g.positioning, g.rebound_control, g.puck_handling, g.mental
             ),
