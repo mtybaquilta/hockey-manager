@@ -6,7 +6,9 @@ from app.db import get_db
 from sqlalchemy import func
 
 from app.errors import GoalieNotFound, SkaterNotFound
+from app.services import contract_service
 from app.services.league_service import get_league
+from app.services.player_age import age_from_birth_date
 from app.models import (
     DevelopmentEvent,
     Game,
@@ -17,6 +19,7 @@ from app.models import (
     Skater,
     SkaterGameStat,
 )
+from app.schemas.contract import ContractOut
 from app.services.free_agents_service import GOALIE_LINEUP_COLS, SKATER_LINEUP_COLS
 from app.schemas.career import (
     GoalieCareerOut,
@@ -108,7 +111,7 @@ class SkaterDetailOut(BaseModel):
     name: str
     age: int
     position: str
-    team_id: int
+    team_id: int | None
     potential: int
     development_type: str
     attributes: _SkaterAttrs
@@ -116,13 +119,14 @@ class SkaterDetailOut(BaseModel):
     game_log: list[SkaterGameLogRow]
     lineup_status: LineupStatus
     team_ranks: SkaterTeamRanks
+    contract: ContractOut | None = None
 
 
 class GoalieDetailOut(BaseModel):
     id: int
     name: str
     age: int
-    team_id: int
+    team_id: int | None
     potential: int
     development_type: str
     attributes: _GoalieAttrs
@@ -130,6 +134,7 @@ class GoalieDetailOut(BaseModel):
     game_log: list[GoalieGameLogRow]
     lineup_status: LineupStatus
     team_ranks: GoalieTeamRanks
+    contract: ContractOut | None = None
 
 
 _SLOT_LABELS = {
@@ -344,10 +349,11 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
         shots=s_total,
         shooting_pct=(g_total / s_total) if s_total else 0.0,
     )
+    contract = contract_service.get_active_contract_for_skater(db, sk.id)
     return SkaterDetailOut(
         id=sk.id,
         name=sk.name,
-        age=sk.age,
+        age=age_from_birth_date(sk.birth_date, season.year),
         position=sk.position,
         team_id=sk.team_id,
         potential=sk.potential,
@@ -363,6 +369,7 @@ def get_skater(skater_id: int, db: Session = Depends(get_db)):
         game_log=log,
         lineup_status=_skater_lineup_status(db, sk),
         team_ranks=_skater_team_ranks(db, sk, season.id),
+        contract=ContractOut.model_validate(contract) if contract else None,
     )
 
 
@@ -408,10 +415,11 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         save_pct=(sv_total / sa_total) if sa_total else 0.0,
         gaa=(ga_total / gp) if gp else 0.0,
     )
+    contract = contract_service.get_active_contract_for_goalie(db, gk.id)
     return GoalieDetailOut(
         id=gk.id,
         name=gk.name,
-        age=gk.age,
+        age=age_from_birth_date(gk.birth_date, season.year),
         team_id=gk.team_id,
         potential=gk.potential,
         development_type=gk.development_type,
@@ -426,6 +434,7 @@ def get_goalie(goalie_id: int, db: Session = Depends(get_db)):
         game_log=log,
         lineup_status=_goalie_lineup_status(db, gk),
         team_ranks=_goalie_team_ranks(db, gk, season.id),
+        contract=ContractOut.model_validate(contract) if contract else None,
     )
 
 

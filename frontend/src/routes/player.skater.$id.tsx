@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { ContractBadge } from "../components/ContractBadge";
 import { Logo } from "../components/Logo";
 import { Pagination, usePager } from "../components/Pagination";
 import { PlayerSilhouette } from "../components/PlayerSilhouette";
@@ -83,6 +84,7 @@ const SkaterDetailPage = () => {
             <span className={`chip ovr ${attrClass(ovr)}`}>{ovr} OVR</span>
             <span className={`chip ovr ${attrClass(p.potential)}`}>{p.potential} POT</span>
             <span className="tag tag-prospect">{p.development_type.replace(/_/g, " ")}</span>
+            <ContractBadge contract={p.contract} currentYear={league.data?.year ?? 0} />
           </div>
           <div className="player-hero-totals">
             <HeroStat k="GP" v={String(gp)} />

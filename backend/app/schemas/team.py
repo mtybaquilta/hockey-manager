@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.contract import ContractOut
+
 
 class SkaterOut(BaseModel):
     id: int
@@ -12,6 +14,7 @@ class SkaterOut(BaseModel):
     passing: int
     defense: int
     physical: int
+    contract: ContractOut | None = None
 
 
 class GoalieOut(BaseModel):
@@ -24,6 +27,7 @@ class GoalieOut(BaseModel):
     rebound_control: int
     puck_handling: int
     mental: int
+    contract: ContractOut | None = None
 
 
 class TeamOut(BaseModel):

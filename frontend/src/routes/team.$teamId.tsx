@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-ro
 import { useState } from "react";
 // Skater/goalie names link to the player detail page.
 import { Button } from "../components/Button";
+import { ContractBadge } from "../components/ContractBadge";
 import { Pagination, usePager } from "../components/Pagination";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
@@ -130,6 +131,7 @@ const TeamPage = () => {
     return <Shell crumbs={["Continental Hockey League", "My Team"]}>Loading…</Shell>;
   }
   const isUser = league.data.user_team_id === id;
+  const currentYear = league.data.year;
 
   const onReleaseSkater = (sid: number, name: string) => {
     if (window.confirm(`Release ${name}? They'll become a free agent.`)) {
@@ -178,6 +180,9 @@ const TeamPage = () => {
         </Td>
         <Td className="num">
           <span className={`chip ${attrClass(p.physical)}`}>{p.physical}</span>
+        </Td>
+        <Td>
+          <ContractBadge contract={p.contract} currentYear={currentYear} />
         </Td>
         {isUser && (
           <Td>
@@ -230,6 +235,7 @@ const TeamPage = () => {
               <Th className="num">PS</Th>
               <Th className="num">DF</Th>
               <Th className="num">PH</Th>
+              <Th>Contract</Th>
               {isUser && <Th />}
             </tr>
           </thead>
@@ -282,6 +288,7 @@ const TeamPage = () => {
               <Th className="num">RC</Th>
               <Th className="num">PH</Th>
               <Th className="num">ME</Th>
+              <Th>Contract</Th>
               {isUser && <Th />}
             </tr>
           </thead>
@@ -322,6 +329,9 @@ const TeamPage = () => {
                   </Td>
                   <Td className="num">
                     <span className={`chip ${attrClass(g.mental)}`}>{g.mental}</span>
+                  </Td>
+                  <Td>
+                    <ContractBadge contract={g.contract} currentYear={currentYear} />
                   </Td>
                   {isUser && (
                     <Td>

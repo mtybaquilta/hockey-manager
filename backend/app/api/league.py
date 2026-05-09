@@ -18,6 +18,7 @@ def _serialize(db: Session, season: Season) -> LeagueOut:
         current_matchday=season.current_matchday,
         status=season.status,
         phase=season.phase,
+        year=season.year,
         champion_team_id=season.champion_team_id,
         teams=[TeamSummary(id=t.id, name=t.name, abbreviation=t.abbreviation) for t in teams],
     )
