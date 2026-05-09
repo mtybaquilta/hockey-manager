@@ -6,12 +6,12 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 
 ## Deferred Gameplay Systems
 
-- Trades (P1.2 implemented — basic 1-for-1 user-team trade block + propose. Deferred: multi-player, picks, contracts, salary cap, NTC, AI↔AI, history page, deadline, negotiation loop.)
+- Trades (P1.2 implemented — basic 1-for-1 user-team trade block + propose. P1.3 added contract value modifier + NTC. Deferred: multi-player, picks, salary cap, AI↔AI, history page, deadline, negotiation loop.)
 - Draft
 - Salary cap
-- Complex contracts
+- Complex contracts (P1.3 implemented — single active contract per rostered player with length/salary/NTC, expiry on rollover. Deferred: bonuses, performance clauses, signing bonuses, two-way contracts, buyouts, retained salary.)
 - Waivers
-- Free agency (P1.1 implemented — basic FA pool + sign/release. Deferred: contracts, salary cap, AI signings, transfer windows.)
+- Free agency (P1.1 + P1.3 implemented — FA pool + sign/release with terms; release preserves contract history. Deferred: salary cap, AI signings, transfer windows, RFA/UFA distinction, qualifying offers.)
 - Scouting
 - Staff hiring
 - Player morale
@@ -51,6 +51,7 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 - Advanced realtime match visualization
 - Mobile app
 - Desktop app
+- Test suite speed-up: add a session-scoped "league simulated to offseason" fixture so the several integration tests doing full-season playthroughs can share one simulation; adopt `pytest-xdist` for parallel execution. Backend suite is ~14 min serially against Postgres because each integration test re-simulates a full season (~78 matchdays × 4 games × ~50 ORM rows/game).
 
 ## Deferred Content Ideas
 
