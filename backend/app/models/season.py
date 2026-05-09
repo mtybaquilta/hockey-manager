@@ -19,3 +19,4 @@ class Season(Base):
     champion_team_id: Mapped[int | None] = mapped_column(
         ForeignKey("team.id", ondelete="SET NULL"), nullable=True
     )
+    year: Mapped[int] = mapped_column(Integer, nullable=False)

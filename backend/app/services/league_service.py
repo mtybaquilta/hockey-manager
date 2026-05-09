@@ -46,7 +46,14 @@ def _wipe(db: Session) -> None:
 def create_or_reset_league(db: Session, seed: int | None) -> Season:
     _wipe(db)
     seed_val = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-    season = Season(seed=seed_val, current_matchday=1, status="active")
+    LEAGUE_START_YEAR = 2025
+    season = Season(
+        seed=seed_val,
+        current_matchday=1,
+        status="active",
+        phase="regular_season",
+        year=LEAGUE_START_YEAR,
+    )
     db.add(season)
     db.flush()
     rng = random.Random(seed_val)
