@@ -7,17 +7,24 @@ from sqlalchemy.orm import Session
 from app.errors import (
     DomainError,
     GoalieNotFound,
+    NoTradeClause,
     NotUserTeam,
     SeasonAlreadyComplete,
     SkaterNotFound,
 )
 from app.models import Goalie, Season, Skater, Team
+from app.services import contract_service
 from app.services.free_agents_service import (
     _clear_goalie_from_lineup,
     _clear_skater_from_lineup,
     _current_user_team_id,
 )
+from app.services.generation.contracts import market_salary
 from app.services.generation.players import goalie_overall, skater_overall
+from app.services.player_age import age_from_birth_date
+
+CONTRACT_LENGTH_WEIGHT = 0.5
+CONTRACT_SALARY_WEIGHT = 0.001
 
 PlayerType = Literal["skater", "goalie"]
 
@@ -63,6 +70,28 @@ def _require_active_season(db: Session) -> Season:
     return season
 
 
+def _has_ntc(db: Session, player_type: str, player_id: int) -> bool:
+    if player_type == "skater":
+        c = contract_service.get_active_contract_for_skater(db, player_id)
+    else:
+        c = contract_service.get_active_contract_for_goalie(db, player_id)
+    return bool(c and c.no_trade_clause)
+
+
+def _contract_modifier(
+    db: Session, player_type: str, player_id: int, season_year: int, ovr: int
+) -> float:
+    if player_type == "skater":
+        c = contract_service.get_active_contract_for_skater(db, player_id)
+    else:
+        c = contract_service.get_active_contract_for_goalie(db, player_id)
+    if not c:
+        return 0.0
+    yrs = max(0, c.expires_after_year - season_year + 1)
+    market = market_salary(ovr)
+    return (yrs - 2) * CONTRACT_LENGTH_WEIGHT - (c.salary - market) * CONTRACT_SALARY_WEIGHT
+
+
 def _age_modifier(age: int) -> int:
     if age <= 23:
         return 4
@@ -95,8 +124,8 @@ def _excluded_top_core(skaters: list[Skater], goalies: list[Goalie]) -> set[tupl
     return out
 
 
-def _reason_for_skater(s: Skater, team_avg: float, position_count: int) -> str:
-    if s.age >= 32:
+def _reason_for_skater(s: Skater, team_avg: float, position_count: int, age: int) -> str:
+    if age >= 32:
         return "Veteran available"
     if (team_avg - _skater_ovr(s)) >= 5:
         return "Depth surplus"
@@ -105,8 +134,8 @@ def _reason_for_skater(s: Skater, team_avg: float, position_count: int) -> str:
     return "On the block"
 
 
-def _reason_for_goalie(g: Goalie, team_avg_g: float) -> str:
-    if g.age >= 32:
+def _reason_for_goalie(g: Goalie, team_avg_g: float, age: int) -> str:
+    if age >= 32:
         return "Veteran available"
     if (team_avg_g - _goalie_ovr(g)) >= 4:
         return "Depth surplus"
@@ -115,6 +144,8 @@ def _reason_for_goalie(g: Goalie, team_avg_g: float) -> str:
 
 def compute_trade_block(db: Session) -> list[dict]:
     user_team_id = _current_user_team_id(db)
+    season = db.query(Season).order_by(Season.id.desc()).first()
+    season_year = season.year if season else 0
     out: list[dict] = []
     teams = db.query(Team).order_by(Team.id).all()
     for team in teams:
@@ -134,8 +165,11 @@ def compute_trade_block(db: Session) -> list[dict]:
         for s in skaters:
             if ("skater", s.id) in excluded:
                 continue
+            if _has_ntc(db, "skater", s.id):
+                continue
             ovr = _skater_ovr(s)
-            score = s.age + (team_avg - ovr)
+            age = age_from_birth_date(s.birth_date, season_year)
+            score = age + (team_avg - ovr)
             entry = {
                 "player_type": "skater",
                 "player_id": s.id,
@@ -143,18 +177,21 @@ def compute_trade_block(db: Session) -> list[dict]:
                 "team_name": team.name,
                 "team_abbreviation": team.abbreviation,
                 "name": s.name,
-                "age": s.age,
+                "age": age,
                 "position": s.position,
                 "ovr": ovr,
-                "asking_value": ovr + _age_modifier(s.age),
-                "reason": _reason_for_skater(s, team_avg, pos_counts.get(s.position, 0)),
+                "asking_value": ovr + _age_modifier(age),
+                "reason": _reason_for_skater(s, team_avg, pos_counts.get(s.position, 0), age),
             }
             candidates.append((score, s.id, entry))
         for g in goalies:
             if ("goalie", g.id) in excluded:
                 continue
+            if _has_ntc(db, "goalie", g.id):
+                continue
             ovr = _goalie_ovr(g)
-            score = g.age + (team_avg_g - ovr)
+            age = age_from_birth_date(g.birth_date, season_year)
+            score = age + (team_avg_g - ovr)
             entry = {
                 "player_type": "goalie",
                 "player_id": g.id,
@@ -162,11 +199,11 @@ def compute_trade_block(db: Session) -> list[dict]:
                 "team_name": team.name,
                 "team_abbreviation": team.abbreviation,
                 "name": g.name,
-                "age": g.age,
+                "age": age,
                 "position": None,
                 "ovr": ovr,
-                "asking_value": ovr + _age_modifier(g.age),
-                "reason": _reason_for_goalie(g, team_avg_g),
+                "asking_value": ovr + _age_modifier(age),
+                "reason": _reason_for_goalie(g, team_avg_g, age),
             }
             candidates.append((score, g.id, entry))
 
@@ -195,12 +232,28 @@ def _goalie_need_modifier(receiving_team_id: int, db: Session) -> int:
     return 0
 
 
-def _value_skater(s: Skater, receiving_team_id: int, db: Session) -> int:
-    return _skater_ovr(s) + _age_modifier(s.age) + _skater_position_need_modifier(s, receiving_team_id, db)
+def _value_skater(s: Skater, receiving_team_id: int, db: Session, season_year: int) -> int:
+    age = age_from_birth_date(s.birth_date, season_year)
+    ovr = _skater_ovr(s)
+    contract_mod = _contract_modifier(db, "skater", s.id, season_year, ovr)
+    return (
+        ovr
+        + _age_modifier(age)
+        + _skater_position_need_modifier(s, receiving_team_id, db)
+        + int(round(contract_mod))
+    )
 
 
-def _value_goalie(g: Goalie, receiving_team_id: int, db: Session) -> int:
-    return _goalie_ovr(g) + _age_modifier(g.age) + _goalie_need_modifier(receiving_team_id, db)
+def _value_goalie(g: Goalie, receiving_team_id: int, db: Session, season_year: int) -> int:
+    age = age_from_birth_date(g.birth_date, season_year)
+    ovr = _goalie_ovr(g)
+    contract_mod = _contract_modifier(db, "goalie", g.id, season_year, ovr)
+    return (
+        ovr
+        + _age_modifier(age)
+        + _goalie_need_modifier(receiving_team_id, db)
+        + int(round(contract_mod))
+    )
 
 
 def propose_trade(
@@ -244,6 +297,9 @@ def propose_trade(
     if target_team_id == user_team_id:
         raise TradeWithOwnTeamNotAllowed()
 
+    if _has_ntc(db, target_player_type, target_id) or _has_ntc(db, offered_player_type, offered_id):
+        raise NoTradeClause("trade rejected: no-trade clause")
+
     block = compute_trade_block(db)
     if not any(
         e["player_type"] == target_player_type and e["player_id"] == target_player_id
@@ -251,12 +307,13 @@ def propose_trade(
     ):
         raise TradeTargetNotAvailable()
 
+    season_year = season.year
     if target_player_type == "skater":
-        target_value = _value_skater(target_s, user_team_id, db)
-        offered_value = _value_skater(offered_s, target_team_id, db)
+        target_value = _value_skater(target_s, user_team_id, db, season_year)
+        offered_value = _value_skater(offered_s, target_team_id, db, season_year)
     else:
-        target_value = _value_goalie(target_g, user_team_id, db)
-        offered_value = _value_goalie(offered_g, target_team_id, db)
+        target_value = _value_goalie(target_g, user_team_id, db, season_year)
+        offered_value = _value_goalie(offered_g, target_team_id, db, season_year)
 
     if offered_value < target_value:
         return {

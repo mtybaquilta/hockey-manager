@@ -81,6 +81,11 @@ class ContractTermsInvalid(DomainError):
     status = 422
 
 
+class NoTradeClause(DomainError):
+    code = "NoTradeClause"
+    status = 409
+
+
 def install_handlers(app: FastAPI) -> None:
     async def handle(_request: Request, exc: DomainError):
         return JSONResponse(
