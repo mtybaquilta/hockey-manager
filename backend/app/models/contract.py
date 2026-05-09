@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -16,6 +16,18 @@ class Contract(Base):
         CheckConstraint(
             "status IN ('active','expired','terminated')",
             name="contract_status_check",
+        ),
+        Index(
+            "ix_contract_skater_id_active",
+            "skater_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND skater_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_contract_goalie_id_active",
+            "goalie_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND goalie_id IS NOT NULL"),
         ),
     )
 
