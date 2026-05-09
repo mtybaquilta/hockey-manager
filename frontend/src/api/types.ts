@@ -81,9 +81,16 @@ export interface GameDetail {
   away_shots_by_period: number[];
 }
 export interface AdvanceResponse {
-  advanced_game_ids: number[]; current_matchday: number; season_status: "active" | "complete";
+  advanced_game_ids: number[]; current_matchday: number;
+  season_status: "active" | "complete";
+  season_phase: SeasonPhase;
 }
-export interface SeasonStatus { current_matchday: number; status: "active" | "complete"; }
+export interface SeasonStatus {
+  current_matchday: number;
+  status: "active" | "complete";
+  phase: SeasonPhase;
+  year: number;
+}
 export interface SeasonStats {
   games_played: number;
   avg_total_goals_per_game: number;

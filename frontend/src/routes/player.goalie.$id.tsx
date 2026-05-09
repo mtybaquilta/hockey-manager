@@ -75,7 +75,7 @@ const GoalieDetailPage = () => {
             <span>Age {p.age}</span>
             <span className="dot">·</span>
             <span className="team-row">
-              <Logo teamId={p.team_id} size={20} />
+              {p.team_id != null && <Logo teamId={p.team_id} size={20} />}
               <span>{team?.name ?? "—"}</span>
             </span>
           </div>

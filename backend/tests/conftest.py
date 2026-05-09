@@ -54,7 +54,7 @@ def db_factory(engine):
     The session is committed so all locks are released before the caller
     reads or the next call to make() drops the tables.
     """
-    sessions = []
+    sessions: list = []
 
     def make(seed: int):
         # Close any sessions from previous calls so drop_all can proceed.
@@ -74,4 +74,32 @@ def db_factory(engine):
         sessions.append(s)
         return s
 
-    return make
+    yield make
+
+    # Teardown: db_factory tests can leave Postgres backends in
+    # 'idle in transaction' (e.g. SQLAlchemy autobegin reopened a closed
+    # session). Forcibly terminate any non-self backend on this database so
+    # the next test starts clean and TRUNCATE doesn't deadlock.
+    for prev in sessions:
+        try:
+            prev.close()
+        except Exception:
+            pass
+    sessions.clear()
+    engine.dispose()
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "SELECT pg_terminate_backend(pid) "
+                "FROM pg_stat_activity "
+                "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+            )
+        )
+        conn.commit()
+    table_names = ", ".join(
+        f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables)
+    )
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))

@@ -29,11 +29,14 @@ class AdvanceOut(BaseModel):
     advanced_game_ids: list[int]
     current_matchday: int
     season_status: str
+    season_phase: str
 
 
 class SeasonStatusOut(BaseModel):
     current_matchday: int
     status: str
+    phase: str
+    year: int
 
 
 class SimToOut(BaseModel):
@@ -54,10 +57,16 @@ def post_advance(db: Session = Depends(get_db)):
 
 
 @router.post("/sim-to", response_model=SimToOut)
-def post_sim_to(matchday: int | None = None, db: Session = Depends(get_db)):
+def post_sim_to(
+    matchday: int | None = None,
+    stop_at_playoffs: bool = False,
+    db: Session = Depends(get_db),
+):
     """Loop advance_matchday until target matchday is reached or season completes.
 
     matchday=None means sim to end of season.
+    stop_at_playoffs=True breaks the loop the moment the regular season ends
+    and the playoff bracket is initialized, so playoffs can be advanced manually.
     """
     matchdays = 0
     games_simmed = 0
@@ -68,6 +77,8 @@ def post_sim_to(matchday: int | None = None, db: Session = Depends(get_db)):
         games_simmed += len(res["advanced_game_ids"])
         last = res
         if res["season_status"] == "complete":
+            break
+        if stop_at_playoffs and res.get("season_phase") == "playoffs":
             break
         if matchday is not None and res["current_matchday"] > matchday:
             break
@@ -89,7 +100,12 @@ def get_status(db: Session = Depends(get_db)):
         from app.errors import LeagueNotFound
 
         raise LeagueNotFound("no active league")
-    return SeasonStatusOut(current_matchday=s.current_matchday, status=s.status)
+    return SeasonStatusOut(
+        current_matchday=s.current_matchday,
+        status=s.status,
+        phase=s.phase,
+        year=s.year,
+    )
 
 
 class SeasonStatsOut(BaseModel):

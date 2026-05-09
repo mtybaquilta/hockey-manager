@@ -94,9 +94,15 @@ const LineupEditor = () => {
           .filter((s) => s.position === activeDef.pos)
           .map((s) => ({ id: s.id, name: s.name, age: s.age, ovr: skaterOvr(s), pos: s.position }));
 
-  const playerName = (id: number) =>
-    roster.data!.skaters.find((s) => s.id === id)?.name ?? roster.data!.goalies.find((g) => g.id === id)?.name;
-  const playerOvr = (id: number) => {
+  const playerName = (id: number | null) => {
+    if (id == null) return undefined;
+    return (
+      roster.data!.skaters.find((s) => s.id === id)?.name ??
+      roster.data!.goalies.find((g) => g.id === id)?.name
+    );
+  };
+  const playerOvr = (id: number | null) => {
+    if (id == null) return null;
     const sk = roster.data!.skaters.find((s) => s.id === id);
     if (sk) return skaterOvr(sk);
     const g = roster.data!.goalies.find((g) => g.id === id);

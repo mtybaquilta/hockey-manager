@@ -19,6 +19,10 @@ def test_create_league_full_setup(db):
 
 
 def test_get_league_raises_when_empty(db):
+    from app.models import Season
+
+    db.query(Season).delete()
+    db.flush()
     with pytest.raises(LeagueNotFound):
         get_league(db)
 

@@ -29,6 +29,8 @@ def _play_to_offseason(db) -> None:
 
 
 def test_rollover_raises_when_no_active_season(db):
+    db.query(Season).delete()
+    db.flush()
     with pytest.raises(NoActiveSeason):
         season_rollover_service.start_next_season(db)
 
