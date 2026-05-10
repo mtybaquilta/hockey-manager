@@ -1,31 +1,38 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type {
-  TradeBlockEntry,
-  TradeProposalRequest,
-  TradeProposalResponse,
+  TradeEvaluateRequest,
+  TradeEvaluateResponse,
+  TradeExecuteResponse,
 } from "../api/types";
 
-export const useTradeBlock = () =>
-  useQuery({
-    queryKey: ["trade-block"],
-    queryFn: () => api.get<TradeBlockEntry[]>("/api/trade-block"),
+export const useEvaluateTrade = () =>
+  useMutation({
+    mutationFn: (req: TradeEvaluateRequest) =>
+      api.post<TradeEvaluateResponse>("/api/trades/evaluate", req),
   });
 
-export const useProposeTrade = (userTeamId: number | null) => {
+export const useExecuteTrade = (userTeamId: number | null, partnerTeamId: number | null) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (req: TradeProposalRequest) =>
-      api.post<TradeProposalResponse>("/api/trades/propose", req),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["trade-block"] });
+    mutationFn: (req: TradeEvaluateRequest) =>
+      api.post<TradeExecuteResponse>("/api/trades/execute", req),
+    onSuccess: (res) => {
+      if (!res.accepted) return;
       qc.invalidateQueries({ queryKey: ["teams"] });
+      qc.invalidateQueries({ queryKey: ["roster"] });
+      qc.invalidateQueries({ queryKey: ["lineup"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
       if (userTeamId != null) {
         qc.invalidateQueries({ queryKey: ["team", userTeamId] });
         qc.invalidateQueries({ queryKey: ["lineup", userTeamId] });
+        qc.invalidateQueries({ queryKey: ["roster", userTeamId] });
       }
-      // Also invalidate the receiving team's roster/lineup if we know it.
-      // The trade-block refetch covers most other team-id cases.
+      if (partnerTeamId != null) {
+        qc.invalidateQueries({ queryKey: ["team", partnerTeamId] });
+        qc.invalidateQueries({ queryKey: ["lineup", partnerTeamId] });
+        qc.invalidateQueries({ queryKey: ["roster", partnerTeamId] });
+      }
     },
   });
 };

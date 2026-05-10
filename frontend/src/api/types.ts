@@ -316,34 +316,43 @@ export interface FreeAgentFilters {
 
 export type PlayerKind = "skater" | "goalie";
 
-export interface TradeBlockEntry {
-  player_type: PlayerKind;
-  player_id: number;
-  team_id: number;
-  team_name: string;
-  team_abbreviation: string;
-  name: string;
-  age: number;
-  position: string | null;
-  ovr: number;
-  asking_value: number;
-  reason: string;
-  contract?: Contract | null;
-}
+export interface TradeOfferPlayer { player_type: PlayerKind; player_id: number; }
 
-export interface TradeProposalRequest {
-  target_player_type: PlayerKind;
-  target_player_id: number;
-  offered_player_type: PlayerKind;
-  offered_player_id: number;
-}
+export type TradeOutlook = "accept" | "close" | "reject";
+export type TradeRejectionCode =
+  | "ValueTooLow"
+  | "NoTradeClause"
+  | "PositionNeedMismatch"
+  | "TopProspect"
+  | "RosterFloor";
+export type TradeWarningCode = "RosterBelowActiveFloor" | "LineupSlotsCleared";
 
-export interface TradeProposalResponse {
-  accepted: boolean;
+export interface TradeRejectionReason {
+  code: TradeRejectionCode;
   message: string;
-  error_code?: string | null;
-  acquired_player_id?: number | null;
-  acquired_player_type?: PlayerKind | null;
-  traded_away_player_id?: number | null;
-  traded_away_player_type?: PlayerKind | null;
+  player_type?: PlayerKind | null;
+  player_id?: number | null;
+}
+export interface TradeWarning {
+  code: TradeWarningCode;
+  message: string;
+  team_id?: number | null;
+}
+
+export interface TradeEvaluateRequest {
+  partner_team_id: number;
+  offered: TradeOfferPlayer[];
+  requested: TradeOfferPlayer[];
+}
+export interface TradeEvaluateResponse {
+  accepted: boolean;
+  outlook: TradeOutlook;
+  offered_value: number;
+  requested_value: number;
+  rejection_reasons: TradeRejectionReason[];
+  warnings: TradeWarning[];
+}
+export interface TradeExecuteResponse extends TradeEvaluateResponse {
+  acquired: TradeOfferPlayer[];
+  traded_away: TradeOfferPlayer[];
 }
