@@ -6,7 +6,7 @@ from typing import Literal
 
 from sqlalchemy.orm import Session
 
-from app.models import Goalie, Skater, Team  # noqa: F401
+from app.models import Goalie, Lineup, Skater, Team  # noqa: F401
 
 
 PlayerType = Literal["skater", "goalie"]
@@ -198,11 +198,186 @@ def evaluate(
     offered: list[OfferPlayer],
     requested: list[OfferPlayer],
 ) -> EvaluateOutcome:
+    def _resolve(p: OfferPlayer):
+        if p.player_type == "skater":
+            return db.query(Skater).filter(Skater.id == p.player_id).first()
+        return db.query(Goalie).filter(Goalie.id == p.player_id).first()
+
+    def _val(p: OfferPlayer, receiving_team_id: int) -> int:
+        obj = _resolve(p)
+        if p.player_type == "skater":
+            return value_skater(db, obj, receiving_team_id, season_year)
+        return value_goalie(db, obj, receiving_team_id, season_year)
+
+    def _name(p: OfferPlayer) -> str:
+        return _resolve(p).name
+
+    def _ntc(p: OfferPlayer) -> bool:
+        if p.player_type == "skater":
+            c = contract_service.get_active_contract_for_skater(db, p.player_id)
+        else:
+            c = contract_service.get_active_contract_for_goalie(db, p.player_id)
+        return bool(c and c.no_trade_clause)
+
+    reasons: list[RejectionReasonOut] = []
+
+    # NTC blocks regardless of value
+    for p in (*offered, *requested):
+        if _ntc(p):
+            reasons.append(
+                RejectionReasonOut(
+                    code="NoTradeClause",
+                    message=f"{_name(p)} has a no-trade clause.",
+                    player_type=p.player_type,
+                    player_id=p.player_id,
+                )
+            )
+
+    # Top prospect: a *requested* AI skater who is young, high-potential, not yet a star
+    for p in requested:
+        if p.player_type != "skater":
+            continue
+        s = _resolve(p)
+        age = age_from_birth_date(s.birth_date, season_year)
+        ovr = _skater_ovr(s)
+        if age <= 23 and s.potential >= 85 and ovr < 80:
+            reasons.append(
+                RejectionReasonOut(
+                    code="TopProspect",
+                    message=f"{s.name} is a top prospect — not available.",
+                    player_type="skater",
+                    player_id=p.player_id,
+                )
+            )
+
+    # Roster floor (catastrophic) post-trade
+    user_skaters = db.query(Skater).filter(Skater.team_id == user_team_id).count()
+    user_goalies = db.query(Goalie).filter(Goalie.team_id == user_team_id).count()
+    partner_skaters = db.query(Skater).filter(Skater.team_id == partner_team_id).count()
+    partner_goalies = db.query(Goalie).filter(Goalie.team_id == partner_team_id).count()
+
+    def _delta(side: list[OfferPlayer], kind: str) -> int:
+        return sum(1 for p in side if p.player_type == kind)
+
+    user_skaters_after = user_skaters - _delta(offered, "skater") + _delta(requested, "skater")
+    user_goalies_after = user_goalies - _delta(offered, "goalie") + _delta(requested, "goalie")
+    partner_skaters_after = partner_skaters + _delta(offered, "skater") - _delta(requested, "skater")
+    partner_goalies_after = partner_goalies + _delta(offered, "goalie") - _delta(requested, "goalie")
+
+    if user_skaters_after < 12 or partner_skaters_after < 12:
+        reasons.append(RejectionReasonOut(code="RosterFloor", message="Not enough skaters post-trade."))
+    if user_goalies_after < 1 or partner_goalies_after < 1:
+        reasons.append(RejectionReasonOut(code="RosterFloor", message="Not enough goalies post-trade."))
+
+    # Position need mismatch — partner team would have ≥6 at any single skater position
+    pos_after_partner: dict[str, int] = {}
+    rows = db.query(Skater.position).filter(Skater.team_id == partner_team_id).all()
+    for (pos,) in rows:
+        pos_after_partner[pos] = pos_after_partner.get(pos, 0) + 1
+    for p in offered:
+        if p.player_type == "skater":
+            s = _resolve(p)
+            pos_after_partner[s.position] = pos_after_partner.get(s.position, 0) + 1
+    for p in requested:
+        if p.player_type == "skater":
+            s = _resolve(p)
+            pos_after_partner[s.position] = pos_after_partner.get(s.position, 0) - 1
+    for pos, n in pos_after_partner.items():
+        if n >= 6:
+            reasons.append(
+                RejectionReasonOut(
+                    code="PositionNeedMismatch",
+                    message=f"Partner team would have too many at {pos}.",
+                )
+            )
+            break
+
+    # Value comparison
+    offered_values = [_val(p, partner_team_id) for p in offered]
+    requested_values = [_val(p, user_team_id) for p in requested]
+    offered_sum = sum(offered_values)
+    requested_sum = sum(requested_values)
+    package_penalty = max(0, len(offered) - len(requested)) * 3
+    best_offered = max(offered_values) if offered_values else 0
+    best_requested = max(requested_values) if requested_values else 0
+
+    sum_ok = offered_sum >= requested_sum + package_penalty
+    floor_ok = best_offered >= best_requested - 5
+
+    if not (sum_ok and floor_ok):
+        reasons.append(
+            RejectionReasonOut(
+                code="ValueTooLow",
+                message="Value too low for partner to accept.",
+            )
+        )
+
+    # Outlook
+    if not reasons:
+        outlook = "accept"
+        accepted = True
+    else:
+        only_value = all(r.code == "ValueTooLow" for r in reasons)
+        close = (
+            only_value
+            and offered_sum >= requested_sum
+            and best_offered >= best_requested - 5
+        )
+        outlook = "close" if close else "reject"
+        accepted = False
+
+    # Warnings (non-blocking)
+    warnings: list[WarningOut] = []
+    if user_skaters_after < 18 or user_goalies_after < 2:
+        warnings.append(
+            WarningOut(
+                code="RosterBelowActiveFloor",
+                message="Your roster will be below the active floor (18 skaters / 2 goalies).",
+                team_id=user_team_id,
+            )
+        )
+    if partner_skaters_after < 18 or partner_goalies_after < 2:
+        warnings.append(
+            WarningOut(
+                code="RosterBelowActiveFloor",
+                message="Partner roster will be below the active floor.",
+                team_id=partner_team_id,
+            )
+        )
+
+    SKATER_LINEUP_COLS = (
+        "line1_lw_id", "line1_c_id", "line1_rw_id",
+        "line2_lw_id", "line2_c_id", "line2_rw_id",
+        "line3_lw_id", "line3_c_id", "line3_rw_id",
+        "line4_lw_id", "line4_c_id", "line4_rw_id",
+        "pair1_ld_id", "pair1_rd_id",
+        "pair2_ld_id", "pair2_rd_id",
+        "pair3_ld_id", "pair3_rd_id",
+    )
+    GOALIE_LINEUP_COLS = ("starting_goalie_id", "backup_goalie_id")
+
+    def _in_lineup(team_id: int, p: OfferPlayer) -> bool:
+        lu = db.query(Lineup).filter(Lineup.team_id == team_id).first()
+        if lu is None:
+            return False
+        cols = SKATER_LINEUP_COLS if p.player_type == "skater" else GOALIE_LINEUP_COLS
+        return any(getattr(lu, c) == p.player_id for c in cols)
+
+    if any(_in_lineup(user_team_id, p) for p in offered) or any(
+        _in_lineup(partner_team_id, p) for p in requested
+    ):
+        warnings.append(
+            WarningOut(
+                code="LineupSlotsCleared",
+                message="Affected lineup slots will be cleared.",
+            )
+        )
+
     return EvaluateOutcome(
-        accepted=False,
-        outlook="reject",
-        offered_value=0,
-        requested_value=0,
-        rejection_reasons=[],
-        warnings=[],
+        accepted=accepted,
+        outlook=outlook,
+        offered_value=offered_sum,
+        requested_value=requested_sum,
+        rejection_reasons=reasons,
+        warnings=warnings,
     )

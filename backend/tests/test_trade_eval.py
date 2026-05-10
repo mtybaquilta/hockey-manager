@@ -86,3 +86,51 @@ def test_evaluate_offer_rejects_partner_equals_user(db):
             offered=[OfferPlayer("skater", s1.id)],
             requested=[OfferPlayer("skater", s2.id)],
         )
+
+
+def test_evaluate_skater_for_skater_returns_outlook(db):
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service
+    from app.services.trade_eval import OfferPlayer
+    from app.models import Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    user_t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, user_t.id)
+    db.flush()
+    ai = db.query(Team).filter(Team.id != user_t.id).order_by(Team.id).first()
+    own = db.query(Skater).filter(Skater.team_id == user_t.id).order_by(Skater.id).first()
+    target = db.query(Skater).filter(Skater.team_id == ai.id).order_by(Skater.id).first()
+    out = trade_service.evaluate_offer(
+        db, partner_team_id=ai.id,
+        offered=[OfferPlayer("skater", own.id)],
+        requested=[OfferPlayer("skater", target.id)],
+    )
+    assert out.outlook in ("accept", "close", "reject")
+
+
+def test_ntc_blocks_evaluation(db):
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service, contract_service
+    from app.services.trade_eval import OfferPlayer
+    from app.models import Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    user_t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, user_t.id)
+    db.flush()
+    ai = db.query(Team).filter(Team.id != user_t.id).order_by(Team.id).first()
+    own = db.query(Skater).filter(Skater.team_id == user_t.id).first()
+    target = db.query(Skater).filter(Skater.team_id == ai.id).first()
+    c = contract_service.get_active_contract_for_skater(db, target.id)
+    c.no_trade_clause = True
+    db.flush()
+    out = trade_service.evaluate_offer(
+        db, partner_team_id=ai.id,
+        offered=[OfferPlayer("skater", own.id)],
+        requested=[OfferPlayer("skater", target.id)],
+    )
+    assert not out.accepted
+    assert any(r.code == "NoTradeClause" for r in out.rejection_reasons)
