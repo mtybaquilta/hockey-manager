@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.errors import (
     DomainError,
     GoalieNotFound,
+    NoActiveSeason,
     NotUserTeam,
     SeasonAlreadyComplete,
     SkaterNotFound,
@@ -33,7 +34,7 @@ class TradeWithOwnTeamNotAllowed(DomainError):
 def _require_active_season(db: Session) -> Season:
     season = db.query(Season).order_by(Season.id.desc()).first()
     if season is None:
-        raise NotUserTeam()
+        raise NoActiveSeason()
     if getattr(season, "status", None) == "complete":
         raise SeasonAlreadyComplete()
     return season

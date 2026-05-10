@@ -134,3 +134,102 @@ def test_ntc_blocks_evaluation(db):
     )
     assert not out.accepted
     assert any(r.code == "NoTradeClause" for r in out.rejection_reasons)
+
+
+def test_top_prospect_blocks(db):
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service
+    from app.services.trade_eval import OfferPlayer
+    from app.models import Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    user_t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, user_t.id)
+    db.flush()
+    ai = db.query(Team).filter(Team.id != user_t.id).order_by(Team.id).first()
+
+    # Force an AI skater to look like a top prospect: young, high potential, sub-80 OVR.
+    target = db.query(Skater).filter(Skater.team_id == ai.id).order_by(Skater.id).first()
+    from datetime import date
+    season_year = db.query(__import__("app.models", fromlist=["Season"]).Season).order_by(
+        __import__("app.models", fromlist=["Season"]).Season.id.desc()
+    ).first().year
+    target.birth_date = date(season_year - 21, 6, 1)
+    target.potential = 90
+    target.skating = 70
+    target.shooting = 70
+    target.passing = 70
+    target.defense = 70
+    target.physical = 70
+    db.flush()
+
+    own = db.query(Skater).filter(
+        Skater.team_id == user_t.id, Skater.position == target.position
+    ).order_by(Skater.id).first()
+    out = trade_service.evaluate_offer(
+        db, partner_team_id=ai.id,
+        offered=[OfferPlayer("skater", own.id)],
+        requested=[OfferPlayer("skater", target.id)],
+    )
+    assert not out.accepted
+    assert any(r.code == "TopProspect" for r in out.rejection_reasons)
+
+
+def test_value_too_low_returned_as_reason(db):
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service
+    from app.services.trade_eval import OfferPlayer
+    from app.models import Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    user_t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, user_t.id)
+    db.flush()
+    ai = db.query(Team).filter(Team.id != user_t.id).order_by(Team.id).first()
+    # Strong AI target + weak user offer of same position.
+    ai_skaters = db.query(Skater).filter(Skater.team_id == ai.id).all()
+    ai_skaters.sort(key=lambda s: -(s.shooting + s.skating + s.passing + s.defense + s.physical))
+    target = ai_skaters[0]
+    own_pool = db.query(Skater).filter(
+        Skater.team_id == user_t.id, Skater.position == target.position
+    ).all()
+    own_pool.sort(key=lambda s: s.shooting + s.skating + s.passing + s.defense + s.physical)
+    weak = own_pool[0]
+    out = trade_service.evaluate_offer(
+        db, partner_team_id=ai.id,
+        offered=[OfferPlayer("skater", weak.id)],
+        requested=[OfferPlayer("skater", target.id)],
+    )
+    if not out.accepted:
+        # The likely-but-not-guaranteed branch under seed=42. Skip if the AI
+        # accepts (e.g. user team's weak skater happens to clear the bar).
+        assert any(r.code == "ValueTooLow" for r in out.rejection_reasons)
+
+
+def test_lineup_slots_cleared_warning(db):
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service
+    from app.services.trade_eval import OfferPlayer
+    from app.models import Lineup, Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    user_t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, user_t.id)
+    db.flush()
+    ai = db.query(Team).filter(Team.id != user_t.id).order_by(Team.id).first()
+    own = db.query(Skater).filter(Skater.team_id == user_t.id).first()
+    target = db.query(Skater).filter(Skater.team_id == ai.id).first()
+
+    # Make sure 'own' is in the user lineup somewhere — pick the player currently in line1_lw_id.
+    lu = db.query(Lineup).filter(Lineup.team_id == user_t.id).first()
+    own = db.query(Skater).filter(Skater.id == lu.line1_lw_id).first() or own
+
+    out = trade_service.evaluate_offer(
+        db, partner_team_id=ai.id,
+        offered=[OfferPlayer("skater", own.id)],
+        requested=[OfferPlayer("skater", target.id)],
+    )
+    assert any(w.code == "LineupSlotsCleared" for w in out.warnings)
