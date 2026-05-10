@@ -1,4 +1,4 @@
-from app.services.trade_eval import age_modifier, potential_modifier
+from app.services.trade_eval import age_modifier, potential_modifier, classify_team_role, contender_modifier
 
 
 def test_age_modifier_brackets():
@@ -15,3 +15,20 @@ def test_potential_modifier_young_high_potential():
     assert potential_modifier(potential=86, age=25) == 2
     assert potential_modifier(potential=78, age=31) == -1
     assert potential_modifier(potential=80, age=27) == 0
+
+
+def test_contender_modifier_values_present_skill():
+    assert contender_modifier("contender", age=27) == 1
+    assert contender_modifier("contender", age=34) == -2
+    assert contender_modifier("rebuilder", age=22) == 2
+    assert contender_modifier("rebuilder", age=31) == -2
+    assert contender_modifier("middle", age=27) == 0
+
+
+def test_classify_team_role_uses_avg_skater_ovr(db):
+    from app.services.league_service import create_or_reset_league
+    from app.models import Team
+    create_or_reset_league(db, seed=42)
+    team_id = db.query(Team).order_by(Team.id).first().id
+    role = classify_team_role(db, team_id)
+    assert role in ("contender", "middle", "rebuilder")
