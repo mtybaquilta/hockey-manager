@@ -78,6 +78,8 @@ def post_sim_to(
         last = res
         if res["season_status"] == "complete":
             break
+        if res.get("season_phase") == "offseason":
+            break
         if stop_at_playoffs and res.get("season_phase") == "playoffs":
             break
         if matchday is not None and res["current_matchday"] > matchday:
