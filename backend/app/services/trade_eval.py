@@ -1,7 +1,7 @@
 """Pure trade-evaluation primitives (no FastAPI; uses SQLAlchemy session for lookups)."""
 from __future__ import annotations
 
-from dataclasses import dataclass  # noqa: F401
+from dataclasses import dataclass
 from typing import Literal
 
 from sqlalchemy.orm import Session
@@ -156,4 +156,53 @@ def value_goalie(db: Session, g: Goalie, receiving_team_id: int, season_year: in
         + potential_modifier(g.potential, age)
         + contender_modifier(role, age)
         + int(round(_contract_modifier(db, "goalie", g.id, season_year, ovr)))
+    )
+
+
+@dataclass(frozen=True)
+class OfferPlayer:
+    player_type: PlayerType
+    player_id: int
+
+
+@dataclass
+class RejectionReasonOut:
+    code: str
+    message: str
+    player_type: PlayerType | None = None
+    player_id: int | None = None
+
+
+@dataclass
+class WarningOut:
+    code: str
+    message: str
+    team_id: int | None = None
+
+
+@dataclass
+class EvaluateOutcome:
+    accepted: bool
+    outlook: str  # "accept" | "close" | "reject"
+    offered_value: int
+    requested_value: int
+    rejection_reasons: list[RejectionReasonOut]
+    warnings: list[WarningOut]
+
+
+def evaluate(
+    db: Session,
+    season_year: int,
+    user_team_id: int,
+    partner_team_id: int,
+    offered: list[OfferPlayer],
+    requested: list[OfferPlayer],
+) -> EvaluateOutcome:
+    return EvaluateOutcome(
+        accepted=False,
+        outlook="reject",
+        offered_value=0,
+        requested_value=0,
+        rejection_reasons=[],
+        warnings=[],
     )

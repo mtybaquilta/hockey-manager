@@ -63,3 +63,26 @@ def test_value_goalie_returns_int(db):
     g = db.query(Goalie).filter(Goalie.team_id == teams[0].id).first()
     v = value_goalie(db, g, receiving_team_id=teams[1].id, season_year=_season_year(db))
     assert isinstance(v, int)
+
+
+def test_evaluate_offer_rejects_partner_equals_user(db):
+    import pytest
+    from app.services.league_service import create_or_reset_league
+    from app.services import manager_profile_service, trade_service
+    from app.services.trade_eval import OfferPlayer
+    from app.services.trade_service import TradeWithOwnTeamNotAllowed
+    from app.models import Skater, Team
+
+    create_or_reset_league(db, seed=42)
+    p = manager_profile_service.create_profile(db, name="Coach")
+    t = db.query(Team).order_by(Team.id).first()
+    manager_profile_service.set_team(db, p.id, t.id)
+    db.flush()
+    s1, s2 = db.query(Skater).filter(Skater.team_id == t.id).limit(2).all()
+    with pytest.raises(TradeWithOwnTeamNotAllowed):
+        trade_service.evaluate_offer(
+            db,
+            partner_team_id=t.id,
+            offered=[OfferPlayer("skater", s1.id)],
+            requested=[OfferPlayer("skater", s2.id)],
+        )
