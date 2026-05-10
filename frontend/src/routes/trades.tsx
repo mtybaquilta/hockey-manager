@@ -97,6 +97,82 @@ const SidePicker = ({
   );
 };
 
+const playerName = (
+  p: TradeOfferPlayer,
+  roster: ReturnType<typeof useRoster>,
+): string => {
+  if (!roster.data) return `#${p.player_id}`;
+  if (p.player_type === "skater") {
+    const s = roster.data.skaters.find((x) => x.id === p.player_id);
+    return s ? s.name : `#${p.player_id}`;
+  }
+  const g = roster.data.goalies.find((x) => x.id === p.player_id);
+  return g ? g.name : `#${p.player_id}`;
+};
+
+const SelectedTradeCard = ({
+  offered,
+  requested,
+  userRoster,
+  partnerRoster,
+}: {
+  offered: TradeOfferPlayer[];
+  requested: TradeOfferPlayer[];
+  userRoster: ReturnType<typeof useRoster>;
+  partnerRoster: ReturnType<typeof useRoster>;
+}) => {
+  const empty = offered.length === 0 && requested.length === 0;
+  const sideStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 180,
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: "var(--ink-3)",
+    textTransform: "uppercase",
+    letterSpacing: ".06em",
+  };
+  const nameStyle: React.CSSProperties = { fontWeight: 700 };
+  const placeholder = <span style={{ color: "var(--ink-3)" }}>—</span>;
+  return (
+    <div className="card" style={{ padding: 12, marginBottom: 14 }}>
+      <div className="ribbon-h"><span className="accent" />Selected trade</div>
+      {empty ? (
+        <div style={{ padding: 12, color: "var(--ink-3)" }}>
+          Pick players below to build the trade.
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, flexWrap: "wrap" }}>
+          <div style={sideStyle}>
+            <span style={labelStyle}>You give</span>
+            {offered.length === 0
+              ? placeholder
+              : offered.map((p) => (
+                  <span key={`o-${p.player_type}-${p.player_id}`} style={nameStyle}>
+                    {playerName(p, userRoster)}
+                  </span>
+                ))}
+          </div>
+          <span style={{ fontSize: 24, fontWeight: 700, color: "var(--ink-3)" }}>→ ←</span>
+          <div style={{ ...sideStyle, alignItems: "flex-end", textAlign: "right" }}>
+            <span style={labelStyle}>You get</span>
+            {requested.length === 0
+              ? placeholder
+              : requested.map((p) => (
+                  <span key={`r-${p.player_type}-${p.player_id}`} style={nameStyle}>
+                    {playerName(p, partnerRoster)}
+                  </span>
+                ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const OutlookBadge = ({ outlook }: { outlook: "accept" | "close" | "reject" }) => {
   const color = outlook === "accept" ? "#1B6F43" : outlook === "close" ? "#A57400" : "#A1192A";
   const label = outlook === "accept" ? "Will accept" : outlook === "close" ? "Close" : "Will reject";
@@ -192,24 +268,14 @@ const TradesPage = () => {
         </select>
       </div>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
-        <SidePicker
-          title="You give"
-          roster={userRoster}
-          selected={offered}
-          onAdd={(p) => setOffered((s) => [...s, p])}
-          onRemove={(p) => setOffered((s) => s.filter((x) => !(x.player_type === p.player_type && x.player_id === p.player_id)))}
-        />
-        <SidePicker
-          title="You get"
-          roster={partnerRoster}
-          selected={requested}
-          onAdd={(p) => setRequested((s) => [...s, p])}
-          onRemove={(p) => setRequested((s) => s.filter((x) => !(x.player_type === p.player_type && x.player_id === p.player_id)))}
-        />
-      </div>
+      <SelectedTradeCard
+        offered={offered}
+        requested={requested}
+        userRoster={userRoster}
+        partnerRoster={partnerRoster}
+      />
 
-      <div className="card" style={{ padding: 12, marginTop: 14 }}>
+      <div className="card" style={{ padding: 12, marginBottom: 14 }}>
         <div className="ribbon-h"><span className="accent" />Outlook</div>
         {!outlook ? (
           <div style={{ padding: 12, color: "var(--ink-3)" }}>
@@ -250,6 +316,23 @@ const TradesPage = () => {
           <Button variant="ghost" onClick={resetSelections}>Clear</Button>
           {submitMsg && <span style={{ alignSelf: "center", fontWeight: 700 }}>{submitMsg}</span>}
         </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
+        <SidePicker
+          title="You give"
+          roster={userRoster}
+          selected={offered}
+          onAdd={(p) => setOffered((s) => [...s, p])}
+          onRemove={(p) => setOffered((s) => s.filter((x) => !(x.player_type === p.player_type && x.player_id === p.player_id)))}
+        />
+        <SidePicker
+          title="You get"
+          roster={partnerRoster}
+          selected={requested}
+          onAdd={(p) => setRequested((s) => [...s, p])}
+          onRemove={(p) => setRequested((s) => s.filter((x) => !(x.player_type === p.player_type && x.player_id === p.player_id)))}
+        />
       </div>
     </Shell>
   );
