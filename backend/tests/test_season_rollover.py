@@ -2,7 +2,6 @@ import pytest
 
 from app.errors import NoActiveSeason, OffseasonRequired
 from app.models import (
-from app.services import manager_profile_service
     Contract,
     DevelopmentEvent,
     Game,
