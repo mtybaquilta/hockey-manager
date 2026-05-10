@@ -5,6 +5,7 @@ import { Logo, TeamRow } from "../components/Logo";
 import { ResultBadge } from "../components/ResultBadge";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
+import { HmApiError } from "../api/client";
 import { useStartNextSeason } from "../queries/development";
 import { useLeague } from "../queries/league";
 import { useSchedule } from "../queries/schedule";
@@ -55,6 +56,17 @@ const Dashboard = () => {
     advance.mutate(undefined, {
       onSuccess: (r) => {
         if (r.season_status === "complete") nav({ to: "/season-complete" });
+      },
+      onError: (err) => {
+        if (err instanceof HmApiError && err.code === "LineupIncomplete") {
+          if (
+            window.confirm(
+              `${err.message}\n\nOpen the lineup editor now?`,
+            )
+          ) {
+            nav({ to: "/team/$teamId/lineup", params: { teamId: String(userId) } });
+          }
+        }
       },
     });
 

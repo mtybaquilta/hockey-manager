@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.errors import LeagueNotFound, SeasonAlreadyComplete
+from app.errors import LeagueNotFound, LineupIncomplete, SeasonAlreadyComplete
 from app.models import (
     Game,
     GameEvent,
@@ -344,6 +344,26 @@ def _advance_playoffs(
     db.flush()
 
 
+_ALL_LINEUP_SLOT_NAMES: tuple[str, ...] = (
+    *(c for trio in LINE_FWD_SLOTS for c in trio),
+    *(c for pair in PAIR_DEF_SLOTS for c in pair),
+    "starting_goalie_id",
+    "backup_goalie_id",
+)
+
+
+def _user_lineup_empty_slots(db: Session) -> list[str]:
+    """Return the names of any unfilled slots in the user team's lineup, or an
+    empty list if the lineup is complete (or no user team is set)."""
+    user_team_id = manager_profile_service.current_team_id(db)
+    if user_team_id is None:
+        return []
+    lu = db.query(Lineup).filter_by(team_id=user_team_id).first()
+    if lu is None:
+        return []
+    return [name for name in _ALL_LINEUP_SLOT_NAMES if getattr(lu, name) is None]
+
+
 def advance_matchday(db: Session) -> dict:
     season = db.query(Season).order_by(Season.id.desc()).first()
     if not season:
@@ -352,6 +372,13 @@ def advance_matchday(db: Session) -> dict:
         raise SeasonAlreadyComplete("season already complete")
     if season.phase == "offseason":
         raise SeasonAlreadyComplete("season is in offseason; start the next season to continue")
+
+    empty = _user_lineup_empty_slots(db)
+    if empty:
+        raise LineupIncomplete(
+            f"{len(empty)} lineup slot(s) empty: {', '.join(empty)}. "
+            "Fill them before simulating."
+        )
 
     games = (
         db.query(Game)

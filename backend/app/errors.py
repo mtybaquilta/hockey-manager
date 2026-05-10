@@ -91,6 +91,11 @@ class OffseasonRequired(DomainError):
     status = 409
 
 
+class LineupIncomplete(DomainError):
+    code = "LineupIncomplete"
+    status = 409
+
+
 def install_handlers(app: FastAPI) -> None:
     async def handle(_request: Request, exc: DomainError):
         return JSONResponse(
