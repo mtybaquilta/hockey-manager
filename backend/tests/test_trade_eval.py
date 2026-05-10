@@ -32,3 +32,34 @@ def test_classify_team_role_uses_avg_skater_ovr(db):
     team_id = db.query(Team).order_by(Team.id).first().id
     role = classify_team_role(db, team_id)
     assert role in ("contender", "middle", "rebuilder")
+
+
+def test_value_skater_returns_int(db):
+    from app.services.league_service import create_or_reset_league
+    from app.models import Skater, Team
+    from app.services.trade_eval import value_skater
+
+    create_or_reset_league(db, seed=42)
+    teams = db.query(Team).order_by(Team.id).all()
+    src = teams[0]
+    dst = teams[1]
+    s = db.query(Skater).filter(Skater.team_id == src.id).first()
+    v = value_skater(db, s, receiving_team_id=dst.id, season_year=_season_year(db))
+    assert isinstance(v, int)
+
+
+def _season_year(db):
+    from app.models import Season
+    return db.query(Season).order_by(Season.id.desc()).first().year
+
+
+def test_value_goalie_returns_int(db):
+    from app.services.league_service import create_or_reset_league
+    from app.models import Goalie, Team
+    from app.services.trade_eval import value_goalie
+
+    create_or_reset_league(db, seed=42)
+    teams = db.query(Team).order_by(Team.id).all()
+    g = db.query(Goalie).filter(Goalie.team_id == teams[0].id).first()
+    v = value_goalie(db, g, receiving_team_id=teams[1].id, season_year=_season_year(db))
+    assert isinstance(v, int)
