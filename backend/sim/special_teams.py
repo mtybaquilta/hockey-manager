@@ -60,12 +60,21 @@ PP_UNIT_PERIOD = 5
 PP2_TICKS_PER_PERIOD = 2  # 2 of every 5 PP ticks → 40% PP2
 
 
+def _pad(seq: tuple, n: int) -> tuple:
+    """Pad a tuple to length n by repeating the last element."""
+    if not seq:
+        raise ValueError("cannot pad an empty sequence")
+    while len(seq) < n:
+        seq = seq + (seq[-1],)
+    return seq
+
+
 def select_special_teams(team: SimTeamLineup) -> SpecialTeams:
     forwards, defense = _split_by_role(_all_skaters(team))
-    pp_f = _top_n(forwards, pp_score, 6)
-    pp_d = _top_n(defense, pp_score, 4)
-    pk_f = _top_n(forwards, pk_score, 2)
-    pk_d = _top_n(defense, pk_score, 2)
+    pp_f = _pad(_top_n(forwards, pp_score, 6), 6)
+    pp_d = _pad(_top_n(defense, pp_score, 4), 4)
+    pk_f = _pad(_top_n(forwards, pk_score, 2), 2)
+    pk_d = _pad(_top_n(defense, pk_score, 2), 2)
     return SpecialTeams(
         pp_forwards=(pp_f[0], pp_f[1], pp_f[2]),
         pp_defense=(pp_d[0], pp_d[1]),
