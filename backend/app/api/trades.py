@@ -56,6 +56,8 @@ def execute_trade(payload: EvaluateRequest, db: Session = Depends(get_db)):
         offered=_to_offer(payload.offered),
         requested=_to_offer(payload.requested),
     )
+    if outcome.accepted:
+        db.commit()
     body = _outcome_to_response(outcome)
     body["acquired"] = [AcquiredPlayer(player_type=p.player_type, player_id=p.player_id) for p in acquired]
     body["traded_away"] = [AcquiredPlayer(player_type=p.player_type, player_id=p.player_id) for p in traded_away]
