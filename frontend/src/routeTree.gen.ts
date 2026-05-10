@@ -9,7 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TradeBlockRouteImport } from './routes/trade-block'
+import { Route as TradesRouteImport } from './routes/trades'
 import { Route as StatsRouteImport } from './routes/stats'
 import { Route as StandingsRouteImport } from './routes/standings'
 import { Route as SeasonCompleteRouteImport } from './routes/season-complete'
@@ -28,9 +28,9 @@ import { Route as TeamTeamIdLineupRouteImport } from './routes/team.$teamId.line
 import { Route as PlayerSkaterIdRouteImport } from './routes/player.skater.$id'
 import { Route as PlayerGoalieIdRouteImport } from './routes/player.goalie.$id'
 
-const TradeBlockRoute = TradeBlockRouteImport.update({
-  id: '/trade-block',
-  path: '/trade-block',
+const TradesRoute = TradesRouteImport.update({
+  id: '/trades',
+  path: '/trades',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatsRoute = StatsRouteImport.update({
@@ -128,7 +128,7 @@ export interface FileRoutesByFullPath {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
-  '/trade-block': typeof TradeBlockRoute
+  '/trades': typeof TradesRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/manager/choose-team': typeof ManagerChooseTeamRoute
@@ -148,7 +148,7 @@ export interface FileRoutesByTo {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
-  '/trade-block': typeof TradeBlockRoute
+  '/trades': typeof TradesRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/manager/choose-team': typeof ManagerChooseTeamRoute
@@ -169,7 +169,7 @@ export interface FileRoutesById {
   '/season-complete': typeof SeasonCompleteRoute
   '/standings': typeof StandingsRoute
   '/stats': typeof StatsRoute
-  '/trade-block': typeof TradeBlockRoute
+  '/trades': typeof TradesRoute
   '/game-preview/$gameId': typeof GamePreviewGameIdRoute
   '/game/$gameId': typeof GameGameIdRoute
   '/manager/choose-team': typeof ManagerChooseTeamRoute
@@ -191,7 +191,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
-    | '/trade-block'
+    | '/trades'
     | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/manager/choose-team'
@@ -211,7 +211,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
-    | '/trade-block'
+    | '/trades'
     | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/manager/choose-team'
@@ -231,7 +231,7 @@ export interface FileRouteTypes {
     | '/season-complete'
     | '/standings'
     | '/stats'
-    | '/trade-block'
+    | '/trades'
     | '/game-preview/$gameId'
     | '/game/$gameId'
     | '/manager/choose-team'
@@ -252,7 +252,7 @@ export interface RootRouteChildren {
   SeasonCompleteRoute: typeof SeasonCompleteRoute
   StandingsRoute: typeof StandingsRoute
   StatsRoute: typeof StatsRoute
-  TradeBlockRoute: typeof TradeBlockRoute
+  TradesRoute: typeof TradesRoute
   GamePreviewGameIdRoute: typeof GamePreviewGameIdRoute
   GameGameIdRoute: typeof GameGameIdRoute
   ManagerChooseTeamRoute: typeof ManagerChooseTeamRoute
@@ -265,11 +265,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/trade-block': {
-      id: '/trade-block'
-      path: '/trade-block'
-      fullPath: '/trade-block'
-      preLoaderRoute: typeof TradeBlockRouteImport
+    '/trades': {
+      id: '/trades'
+      path: '/trades'
+      fullPath: '/trades'
+      preLoaderRoute: typeof TradesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stats': {
@@ -415,7 +415,7 @@ const rootRouteChildren: RootRouteChildren = {
   SeasonCompleteRoute: SeasonCompleteRoute,
   StandingsRoute: StandingsRoute,
   StatsRoute: StatsRoute,
-  TradeBlockRoute: TradeBlockRoute,
+  TradesRoute: TradesRoute,
   GamePreviewGameIdRoute: GamePreviewGameIdRoute,
   GameGameIdRoute: GameGameIdRoute,
   ManagerChooseTeamRoute: ManagerChooseTeamRoute,
