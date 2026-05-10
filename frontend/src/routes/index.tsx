@@ -6,7 +6,6 @@ import { ResultBadge } from "../components/ResultBadge";
 import { Shell } from "../components/Shell";
 import { Table, Td, Th } from "../components/Table";
 import { HmApiError } from "../api/client";
-import { useStartNextSeason } from "../queries/development";
 import { useLeague } from "../queries/league";
 import { useSchedule } from "../queries/schedule";
 import { useAdvance, useSeasonStatus, useSimTo } from "../queries/season";
@@ -21,7 +20,6 @@ const Dashboard = () => {
   const status = useSeasonStatus();
   const advance = useAdvance();
   const simTo = useSimTo();
-  const startNext = useStartNextSeason();
   const [simTarget, setSimTarget] = useState<string>("");
   const nav = useNavigate();
 
@@ -92,17 +90,9 @@ const Dashboard = () => {
             Season complete →
           </Link>
         ) : inOffseason ? (
-          <button
-            className="btn btn-primary"
-            disabled={startNext.isPending}
-            onClick={() =>
-              startNext.mutate(undefined, {
-                onSuccess: (res) => nav({ to: "/development-summary", search: { season_id: res.new_season_id } }),
-              })
-            }
-          >
-            {startNext.isPending ? "Starting…" : "Start New Season →"}
-          </button>
+          <Link to="/offseason" className="btn btn-primary">
+            Offseason Hub →
+          </Link>
         ) : (
           <button className="btn btn-primary" disabled={advance.isPending} onClick={onAdvance}>
             {advance.isPending
@@ -126,7 +116,7 @@ const Dashboard = () => {
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Offseason</div>
           <div style={{ fontSize: 13, color: "var(--ink-2)" }}>
-            The season is over. Sign free agents, then start the next season when you're ready.
+            The season is over. Use the Offseason Hub to review contracts, sign free agents, and set your lineup before starting the next season.
           </div>
         </div>
       )}
