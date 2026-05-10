@@ -6,7 +6,7 @@ Adding an idea here does not mean it is rejected. It means it should not be impl
 
 ## Deferred Gameplay Systems
 
-- Trades (P1.2 implemented — basic 1-for-1 user-team trade block + propose. P1.3 added contract value modifier + NTC. Deferred: multi-player, picks, salary cap, AI↔AI, history page, deadline, negotiation loop.)
+- Trades (P1.5 implemented — multi-player offer builder + AI evaluation with structured rejection reasons + warnings. Deferred: salary cap, draft picks, retained salary, multi-team trades, AI↔AI trades, history page, deadline, negotiation rounds.)
 - Draft
 - Salary cap
 - Complex contracts (P1.3 implemented — single active contract per rostered player with length/salary/NTC, expiry on rollover. Deferred: bonuses, performance clauses, signing bonuses, two-way contracts, buyouts, retained salary.)

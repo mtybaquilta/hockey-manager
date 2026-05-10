@@ -105,14 +105,16 @@ Track basic standings:
 - Released players return to the pool. Lineup slots referencing them are cleared automatically; stats are preserved.
 - Implementation: `team_id` is nullable on `skater` and `goalie`; `team_id IS NULL` ⇔ free agent.
 
-### Trades (P1.2)
+### Trades (P1.5)
 
-- Computed trade block per AI team (1–3 candidates each), excluding top-3 forwards / top-2 D / #1 goalie.
-- `/trade-block` page lists candidates with team, name, age, OVR, asking value, reason.
-- User team can propose 1-for-1 same-type trades (skater↔skater, goalie↔goalie).
-- Backend evaluates deterministically: `value = ovr + age_modifier + position_need_modifier`. Accept iff offered value ≥ target value.
-- Accepted trade swaps `team_id` in one transaction. Lineup slots referencing either traded player are cleared automatically (mirrors the release flow).
-- Out of scope: multi-player trades, draft picks, salary cap, contracts, NTC, AI↔AI trades, history page, deadline, negotiation.
+- `/trades` page: offer builder with 1–3 players per side, AI partner selector, real-time evaluation outlook, and submit.
+- `POST /api/trades/evaluate` and `POST /api/trades/execute`. Execute re-evaluates inside the transaction and only mutates if accepted.
+- Per-player value formula: `ovr + age_modifier + position_need + potential_modifier + contender_modifier + round(contract_modifier)`.
+- Acceptance: `offered_sum ≥ requested_sum + package_penalty` AND `best_offered ≥ best_requested − 5`. Package penalty = `max(0, len(offered) − len(requested)) × 3`.
+- Structured rejection reasons: `ValueTooLow`, `NoTradeClause`, `PositionNeedMismatch`, `TopProspect`, `RosterFloor` (catastrophic only: skaters < 12 or goalies < 1).
+- Non-blocking warnings: `RosterBelowActiveFloor` (skaters < 18 or goalies < 2 on either side), `LineupSlotsCleared`. Lineup gaps are gated by Advance, not by the trade itself.
+- On accept: swap `team_id` for all involved players and clear referencing lineup slots on both teams in one transaction.
+- Out of scope: salary cap, draft picks, retained salary, multi-team trades, trade deadline, AI-initiated trades, negotiation rounds.
 
 ### Contracts + Season Rollover (P1.3)
 
