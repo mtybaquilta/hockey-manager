@@ -41,8 +41,17 @@ const ProgressionRow = ({ p }: { p: SeasonProgressionOut }) => {
 const Page = () => {
   const { season_id } = Route.useSearch();
   const q = useDevelopmentSummary(season_id);
-  if (q.isLoading || !q.data) {
+  if (q.isLoading) {
     return <Shell crumbs={["Continental Hockey League", "Development"]}>Loading…</Shell>;
+  }
+  if (q.isError || !q.data) {
+    return (
+      <Shell crumbs={["Continental Hockey League", "Development"]}>
+        <div style={{ padding: "24px 0", color: "var(--ink-3)" }}>
+          No development data yet. Player progressions are recorded when you start the next season.
+        </div>
+      </Shell>
+    );
   }
   return (
     <Shell crumbs={["Continental Hockey League", "Development", `Season ${q.data.season_id}`]}>

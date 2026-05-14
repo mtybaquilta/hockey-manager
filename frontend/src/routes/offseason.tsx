@@ -148,7 +148,7 @@ const OffseasonHub = () => {
           status="recommended"
           to="/development-summary"
           title="Review development summary"
-          sub="See how your players developed last season"
+          sub="Player progressions from the last rollover"
         />
         <CheckRow
           status={expiringCount > 0 ? "warning" : "complete"}
